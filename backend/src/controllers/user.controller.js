@@ -1,112 +1,123 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../services/prisma.service');
+const mockDb = require('../services/mock.service');
 const bcrypt = require('bcryptjs');
 
 exports.createIndividualUser = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role, designation, department, employeeId, dateOfJoining } = req.body;
-    
-    // Check for existing email or employeeId
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email },
-          { employeeId }
-        ]
-      }
-    });
+    const { email, firstName, lastName, role, designation, department, employeeId, dateOfJoining, managerId } = req.body;
+    const organizationId = req.organizationId;
 
-    if (existingUser) {
-      return res.status(400).json({ message: 'User with this email or employee ID already exists' });
+    if (!organizationId) {
+      return res.status(403).json({ message: 'Organization context missing from your session' });
     }
 
-    const hashedPassword = await bcrypt.hash(password || 'password123', 10);
-    
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        role,
-        designation,
-        department,
-        employeeId,
-        dateOfJoining: new Date(dateOfJoining),
-      },
-    });
-    
-    res.status(201).json(newUser);
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating user', error: error.message });
-  }
-};
+    if (!email || !firstName || !employeeId) {
+      return res.status(400).json({ message: 'Required fields missing: Email, First Name, and Employee ID are mandatory.' });
+    }
 
-exports.bulkUploadUsers = async (req, res) => {
-  try {
-    const { users } = req.body; // Expecting array of user objects
-    
-    const hashedPassword = await bcrypt.hash('password123', 10);
-    
-    const createdUsers = await Promise.all(
-      users.map(user => 
-        prisma.user.upsert({
-          where: { email: user.email },
-          update: {},
-          create: {
-            ...user,
-            password: hashedPassword,
-            dateOfJoining: new Date(user.dateOfJoining || Date.now()),
-          }
-        })
-      )
-    );
-    
-    res.status(201).json({ count: createdUsers.length, message: 'Bulk upload successful' });
+    /*
+    // --- PRISMA/POSTGRES MODE ---
+    try {
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      const user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          firstName,
+          lastName: lastName || '',
+          role: role || 'EMPLOYEE',
+          designation,
+          department,
+          employeeId,
+          dateOfJoining: new Date(dateOfJoining || Date.now()),
+          organizationId,
+          managerId
+        }
+      });
+      return res.status(201).json(user);
+    } catch (dbError) {
+       console.error('❌ User Database Error:', dbError.message);
+       console.warn('⚠️ Falling back to Mock Mode...');
+    }
+    */
+
+    // --- MOCK MODE FALLBACK ---
+    try {
+      // Check for duplicate employeeId in Mock
+      const existing = mockDb.findOne('users', { employeeId, organizationId });
+      if (existing) {
+        return res.status(400).json({ message: `Employee ID "${employeeId}" already exists in your organization.` });
+      }
+
+      const user = mockDb.create('users', { 
+        email, 
+        password: 'password123', 
+        firstName, 
+        lastName: lastName || '', 
+        role: role || 'EMPLOYEE', 
+        designation, 
+        department, 
+        employeeId, 
+        organizationId,
+        managerId
+      });
+      });
+      return res.status(201).json(user);
+    } catch (mockError) {
+      console.error('❌ Mock DB Error:', mockError);
+      throw new Error('Failed to save to local storage: ' + mockError.message);
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Bulk upload failed', error: error.message });
+    console.error('❌ User creation fatal error:', error);
+    res.status(500).json({ 
+      message: 'CRITICAL_USER_CREATE_ERROR_V4', 
+      error: error.message
+    });
   }
 };
 
 exports.getAllEmployees = async (req, res) => {
   try {
-    const employees = await prisma.user.findMany({
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        designation: true,
-        department: true,
-        employeeId: true,
-        role: true,
-      },
-    });
+    const organizationId = req.organizationId;
+    
+    // --- PRISMA/POSTGRES MODE ---
+    try {
+      const employees = await prisma.user.findMany({
+        where: { organizationId },
+        select: { id: true, firstName: true, lastName: true, email: true, designation: true, role: true }
+      });
+      return res.json(employees);
+    } catch (dbError) {
+       console.warn('⚠️ User Postgres Error, using Mock:', dbError.message);
+    }
+
+    // --- MOCK MODE FALLBACK ---
+    const employees = mockDb.find('users', { organizationId });
     res.json(employees);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Fetch employees failed', error: error.message });
   }
 };
 
 exports.getUserProfile = async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        _count: {
-          select: { leaves: true, attendances: true }
-        }
-      }
-    });
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    // --- PRISMA/POSTGRES MODE ---
+    try {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      return res.json(user);
+    } catch (dbError) {
+       console.warn('⚠️ User Postgres Error, using Mock:', dbError.message);
     }
 
+    // --- MOCK MODE FALLBACK ---
+    const user = mockDb.findOne('users', { id: userId });
+    if (!user) return res.status(404).json({ message: 'User not found (Mock)' });
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Profile fetch failed', error: error.message });
   }
 };
 
@@ -115,21 +126,23 @@ exports.updateProfile = async (req, res) => {
     const { userId } = req.params;
     const { firstName, lastName, designation, department, emergencyContact, emergencyContactName, profilePicture } = req.body;
     
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { 
-        firstName, 
-        lastName, 
-        designation, 
-        department, 
-        emergencyContact, 
-        emergencyContactName, 
-        profilePicture 
-      },
-    });
+    // --- PRISMA/POSTGRES MODE ---
+    try {
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { firstName, lastName, designation, department, emergencyContact, emergencyContactName, profilePicture }
+      });
+      return res.json(updatedUser);
+    } catch (dbError) {
+       console.warn('⚠️ User Postgres Error, using Mock:', dbError.message);
+    }
 
-    res.json(updatedUser);
+    // --- MOCK MODE FALLBACK ---
+    const updated = mockDb.update('users', userId, { firstName, lastName, designation, department, emergencyContact, emergencyContactName, profilePicture });
+    if (!updated) return res.status(404).json({ message: 'User not found (Mock)' });
+    
+    res.json(updated);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Update failed', error: error.message });
   }
 };

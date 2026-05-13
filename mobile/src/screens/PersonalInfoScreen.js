@@ -91,13 +91,13 @@ const PersonalInfoScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Details</Text>
           <View style={styles.card}>
-            <InfoItem label="Full Name" value={`${userData?.firstName} ${userData?.lastName}`} icon={User} colors={colors} />
+            <InfoItem label="Full Name" value={`${userData?.firstName} ${userData?.lastName}`} icon={User} colors={colors} styles={styles} />
             <View style={styles.divider} />
-            <InfoItem label="Employee ID" value={userData?.employeeId} icon={Shield} colors={colors} />
+            <InfoItem label="Employee ID" value={userData?.employeeId} icon={Shield} colors={colors} styles={styles} />
             <View style={styles.divider} />
-            <InfoItem label="Designation" value={userData?.designation} icon={Briefcase} colors={colors} />
+            <InfoItem label="Designation" value={userData?.designation} icon={Briefcase} colors={colors} styles={styles} />
             <View style={styles.divider} />
-            <InfoItem label="Department" value={userData?.department} icon={Briefcase} colors={colors} />
+            <InfoItem label="Department" value={userData?.department} icon={Briefcase} colors={colors} styles={styles} />
           </View>
         </View>
 
@@ -105,7 +105,7 @@ const PersonalInfoScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Information</Text>
           <View style={styles.card}>
-            <InfoItem label="Work Email" value={userData?.email} icon={Mail} colors={colors} type="email" />
+            <InfoItem label="Work Email" value={userData?.email} icon={Mail} colors={colors} type="email" styles={styles} />
           </View>
         </View>
 
@@ -163,7 +163,7 @@ const PersonalInfoScreen = ({ navigation }) => {
   );
 };
 
-const InfoItem = ({ label, value, icon: Icon, colors, type }) => {
+const InfoItem = ({ label, value, icon: Icon, colors, type, styles }) => {
   const handlePress = () => {
     if (!value || value === 'N/A') return;
     if (type === 'email') Linking.openURL(`mailto:${value}`);

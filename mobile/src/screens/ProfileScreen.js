@@ -158,7 +158,7 @@ const ProfileScreen = ({ navigation }) => {
           </View>
 
           {/* Role-Based Admin Shortcut */}
-          {(userData?.role === 'HR' || userData?.role === 'ADMIN') && (
+          {(userData?.role === 'HR' || userData?.role === 'ORG_ADMIN' || userData?.role === 'ADMIN') && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Admin Controls</Text>
               <TouchableOpacity 

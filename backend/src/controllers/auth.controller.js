@@ -9,18 +9,16 @@ const mockUser = {
   role: 'ADMIN',
 };
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const User = require('../models/User');
+const Organization = require('../models/Organization');
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body.email || req.query.email;
+    const password = req.body.password || req.query.password;
 
     // Check if user exists in DB
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { organization: true }
-    });
+    const user = await User.findOne({ email }).populate('organizationId');
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -34,34 +32,38 @@ exports.login = async (req, res) => {
     }
 
     // Check organization status for non-super admins
-    if (user.role !== 'SUPER_ADMIN' && user.organization) {
-      if (user.organization.status !== 'APPROVED') {
+    const organization = user.organizationId; // populated
+    if (user.role !== 'SUPER_ADMIN' && organization) {
+      if (organization.status !== 'APPROVED') {
+        const statusStr = organization.status ? organization.status.toLowerCase() : 'pending';
         return res.status(403).json({ 
-          message: `Your organization account is ${user.organization.status.toLowerCase()}. Please contact support.` 
+          message: `Your organization account is ${statusStr}. Please contact support.` 
         });
       }
     }
 
+    const secret = process.env.JWT_SECRET || 'default_secret';
     const token = jwt.sign(
-      { id: user.id, role: user.role, organizationId: user.organizationId },
-      process.env.JWT_SECRET,
+      { id: user._id, role: user.role, organizationId: organization?._id },
+      secret,
       { expiresIn: '1d' }
     );
 
     res.json({
       token,
       user: {
-        id: user.id,
+        id: user._id,
         email: user.email,
         role: user.role,
         firstName: user.firstName,
         lastName: user.lastName,
-        organizationId: user.organizationId,
-        organizationName: user.organization?.name
+        organizationId: organization?._id,
+        organizationName: organization ? organization.name : null
       },
     });
 
   } catch (error) {
+    require('fs').writeFileSync('error.log', error.stack || error.message);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

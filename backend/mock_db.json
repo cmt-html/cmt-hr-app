@@ -1,0 +1,169 @@
+{
+  "organizations": [
+    {
+      "id": "org_1",
+      "name": "CloudMojo Tech",
+      "slug": "cloudmojo",
+      "email": "contact@cloudmojo.tech",
+      "status": "APPROVED",
+      "subscription": {
+        "status": "ACTIVE",
+        "planId": "3"
+      },
+      "createdAt": "2026-05-13T11:43:00Z"
+    },
+    {
+      "name": "Imran",
+      "slug": "test",
+      "email": "imran@cmt.com",
+      "status": "APPROVED",
+      "subscription": {
+        "status": "TRIAL"
+      },
+      "id": "1778673264363",
+      "createdAt": "2026-05-13T11:54:24.363Z"
+    },
+    {
+      "name": "xzy",
+      "slug": "xy",
+      "email": "xyz@cmt.com",
+      "status": "APPROVED",
+      "subscription": {
+        "status": "TRIAL"
+      },
+      "id": "1778674904305",
+      "createdAt": "2026-05-13T12:21:44.305Z"
+    },
+    {
+      "name": "xyz",
+      "slug": "cmt",
+      "email": "xyz@cmt.com",
+      "status": "APPROVED",
+      "subscription": {
+        "status": "TRIAL"
+      },
+      "id": "1778675514730",
+      "createdAt": "2026-05-13T12:31:54.730Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "user_admin",
+      "organizationId": "org_1",
+      "email": "admin@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Admin",
+      "lastName": "User",
+      "role": "ORG_ADMIN",
+      "createdAt": "2026-05-13T11:43:00Z"
+    },
+    {
+      "id": "user_hr",
+      "organizationId": "org_1",
+      "email": "jane.hr@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Jane",
+      "lastName": "HR",
+      "role": "HR",
+      "createdAt": "2026-05-13T11:43:00Z"
+    },
+    {
+      "id": "user_manager",
+      "organizationId": "org_1",
+      "email": "sarah.manager@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Sarah",
+      "lastName": "Manager",
+      "role": "MANAGER",
+      "createdAt": "2026-05-13T11:43:00Z"
+    },
+    {
+      "id": "user_employee",
+      "organizationId": "org_1",
+      "email": "john.dev@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "John",
+      "lastName": "Employee",
+      "role": "EMPLOYEE",
+      "createdAt": "2026-05-13T11:43:00Z"
+    },
+    {
+      "id": "user_super",
+      "email": "superadmin@cmt.com",
+      "password": "superadmin123",
+      "firstName": "Super",
+      "lastName": "Admin",
+      "role": "SUPER_ADMIN",
+      "createdAt": "2026-05-13T11:43:00Z"
+    },
+    {
+      "organizationId": "1778673264363",
+      "email": "imran@cmt.com",
+      "password": "1234",
+      "firstName": "Imran",
+      "lastName": "Khan",
+      "role": "ORG_ADMIN",
+      "id": "1778673264364",
+      "createdAt": "2026-05-13T11:54:24.364Z"
+    },
+    {
+      "organizationId": "1778674904305",
+      "email": "xyz@cmt.com",
+      "password": "1234",
+      "firstName": "Im",
+      "lastName": "Kh",
+      "role": "ORG_ADMIN",
+      "id": "1778674904306",
+      "createdAt": "2026-05-13T12:21:44.306Z"
+    },
+    {
+      "organizationId": "1778675514730",
+      "email": "xyz@cmt.com",
+      "password": "",
+      "firstName": "Imran",
+      "lastName": "Khan",
+      "role": "ORG_ADMIN",
+      "id": "1778675514731",
+      "createdAt": "2026-05-13T12:31:54.731Z"
+    }
+  ],
+  "attendances": [],
+  "leaves": [],
+  "configs": [],
+  "plans": [
+    {
+      "id": "1",
+      "name": "Starter",
+      "price": {
+        "monthly": 49
+      },
+      "features": [
+        "attendance"
+      ]
+    },
+    {
+      "id": "2",
+      "name": "Pro",
+      "price": {
+        "monthly": 99
+      },
+      "features": [
+        "attendance",
+        "payroll"
+      ]
+    },
+    {
+      "id": "3",
+      "name": "Enterprise",
+      "price": {
+        "monthly": 249
+      },
+      "features": [
+        "attendance",
+        "payroll",
+        "ai-assistant"
+      ]
+    }
+  ],
+  "auditLogs": []
+}

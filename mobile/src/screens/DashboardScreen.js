@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
 import { sendLocalNotification } from '../utils/notifications';
 import api, { attendanceService, leaveService } from '../services/api.service';
-import { Calendar, Clock, UserCheck, Briefcase, ChevronRight, Bell, AlertCircle, BarChart3 } from 'lucide-react-native';
+import { Calendar, Clock, UserCheck, Briefcase, ChevronRight, Bell, AlertCircle, BarChart3, Shield } from 'lucide-react-native';
 
 
 const { width } = Dimensions.get('window');
@@ -132,45 +132,22 @@ const DashboardScreen = ({ navigation }) => {
     
     setIsLoadingLocation(true);
     try {
-      console.log('--- Attendance Process Started ---');
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      console.log('--- Local Attendance Process Started ---');
       
-      if (status !== 'granted') {
-        console.warn('Location permission denied.');
-      }
-
-      console.log('Fetching position...');
-      let location = await Location.getLastKnownPositionAsync({});
-      if (!location) {
-        location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-          timeout: 5000,
-        });
-      }
-
-      const locationStr = location ? `${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}` : 'Remote';
-      let addressStr = locationStr;
-
-      if (location) {
-        try {
-          const reverseGeocodedAddress = await Location.reverseGeocodeAsync({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude
-          });
-          
-          if (reverseGeocodedAddress.length > 0) {
-            const addr = reverseGeocodedAddress[0];
-            addressStr = `${addr.name || ''}, ${addr.street || ''}, ${addr.city || ''}, ${addr.region || ''}`.replace(/^, |, $/g, '').replace(/, , /g, ', ');
-          }
-        } catch (addrError) {
-          console.warn('Reverse geocoding failed:', addrError);
+      let addressStr = 'Remote';
+      try {
+        const location = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
+          new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 2000))
+        ]);
+        if (location) {
+          addressStr = `${location.coords.latitude.toFixed(2)}, ${location.coords.longitude.toFixed(2)}`;
         }
+      } catch (e) {
+        console.warn('Using Remote status');
       }
 
       if (isCheckedIn) {
-        // Backend Check-out
-        await attendanceService.checkOut(userData.id);
-
         const savedTime = await AsyncStorage.getItem('@check_in_time');
         const startTime = parseInt(savedTime, 10);
         const sessionDuration = Math.floor((Date.now() - startTime) / 1000);
@@ -183,27 +160,20 @@ const DashboardScreen = ({ navigation }) => {
         setTotalTodaySeconds(newTotal);
         setSeconds(newTotal);
         setIsCheckedIn(false);
-        sendLocalNotification('Checked Out', 'Your session has been saved successfully.');
+        sendLocalNotification('Checked Out', 'Local session saved.');
       } else {
-        // Backend Check-in
-        await attendanceService.checkIn(userData.id, addressStr);
-
         const startTime = Date.now().toString();
         await AsyncStorage.setItem('@check_in_status', 'true');
         await AsyncStorage.setItem('@check_in_time', startTime);
-        await AsyncStorage.setItem('@last_session_date', new Date().toDateString());
         
         setIsCheckedIn(true);
-        sendLocalNotification('Checked In', 'Your attendance timer has started.');
+        sendLocalNotification('Checked In', 'Local timer started.');
       }
-
     } catch (error) {
-      console.error('Check-in failed:', error);
-      const errorMessage = error.response?.data?.message || 'Attendance update failed. Please check your connection.';
-      Alert.alert('Attendance Error', errorMessage);
+      console.error('Local attendance failed:', error);
+      Alert.alert('Error', 'Failed to update attendance locally.');
     } finally {
       setIsLoadingLocation(false);
-      console.log('--- Attendance Process Finished ---');
     }
   };
 
@@ -284,6 +254,23 @@ const DashboardScreen = ({ navigation }) => {
             <View style={{ flex: 1 }}>
               <Text style={styles.adminTitle}>Platform Administration</Text>
               <Text style={styles.adminSubtitle}>Manage organizations and platform health</Text>
+            </View>
+            <ChevronRight size={20} color={colors.textLight} />
+          </TouchableOpacity>
+        )}
+
+        {/* Org Admin Action */}
+        {userData?.role === 'ORG_ADMIN' && (
+          <TouchableOpacity 
+            style={[styles.adminBanner, { borderColor: colors.primary + '30' }]}
+            onPress={() => navigation.navigate('AdminDashboard')}
+          >
+            <View style={[styles.adminIconBox, { backgroundColor: colors.primary }]}>
+              <Shield size={20} color={colors.white} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.adminTitle}>Admin Control Center</Text>
+              <Text style={styles.adminSubtitle}>Manage employees and company configuration</Text>
             </View>
             <ChevronRight size={20} color={colors.textLight} />
           </TouchableOpacity>

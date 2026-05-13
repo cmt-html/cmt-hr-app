@@ -31,6 +31,10 @@ export const authService = {
     }
     return response.data;
   },
+  registerOrganization: async (orgData) => {
+    const response = await api.post('/auth/register', orgData);
+    return response.data;
+  },
   logout: async () => {
     await AsyncStorage.removeItem('userToken');
     await AsyncStorage.removeItem('userData');

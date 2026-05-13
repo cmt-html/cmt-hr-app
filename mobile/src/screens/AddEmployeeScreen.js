@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, ScrollView, StatusBar, Platform, KeyboardAvoidingView } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -35,7 +35,29 @@ const AddEmployeeScreen = ({ navigation }) => {
     designation: '',
     department: '',
     dateOfJoining: new Date().toISOString().split('T')[0],
+    managerId: '',
   });
+
+  const [managers, setManagers] = useState([]);
+  const [fetchingManagers, setFetchingManagers] = useState(false);
+
+  useEffect(() => {
+    fetchManagers();
+  }, []);
+
+  const fetchManagers = async () => {
+    setFetchingManagers(true);
+    try {
+      const response = await api.get('/employees');
+      // Potential managers are Admin, Manager, and HR
+      const adminUsers = response.data.filter(u => ['ORG_ADMIN', 'MANAGER', 'HR'].includes(u.role));
+      setManagers(adminUsers);
+    } catch (error) {
+      console.error('Error fetching managers:', error);
+    } finally {
+      setFetchingManagers(false);
+    }
+  };
 
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +76,8 @@ const AddEmployeeScreen = ({ navigation }) => {
     } catch (error) {
       console.error(error);
       const message = error.response?.data?.message || 'Failed to connect to server';
-      alert('Error: ' + message);
+      const detail = error.response?.data?.error || '';
+      alert(`Error: ${message}${detail ? '\nDetails: ' + detail : ''}`);
     } finally {
       setLoading(false);
     }
@@ -118,16 +141,48 @@ const AddEmployeeScreen = ({ navigation }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Role</Text>
             <View style={styles.roleGrid}>
-              {['EMPLOYEE', 'MANAGER', 'HR', 'ADMIN'].map((r) => (
+              {['EMPLOYEE', 'MANAGER', 'HR', 'ORG_ADMIN'].map((r) => (
                 <TouchableOpacity 
                   key={r}
                   style={[styles.roleBtn, form.role === r && styles.roleBtnActive]}
                   onPress={() => setForm({...form, role: r})}
                 >
-                  <Text style={[styles.roleBtnText, form.role === r && styles.roleBtnTextActive]}>{r}</Text>
+                  <Text style={[styles.roleBtnText, form.role === r && styles.roleBtnTextActive]}>
+                    {r === 'ORG_ADMIN' ? 'ADMIN' : r}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Reporting Manager</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.managerList}>
+              <TouchableOpacity 
+                style={[styles.managerBtn, !form.managerId && styles.managerBtnActive]}
+                onPress={() => setForm({...form, managerId: ''})}
+              >
+                <Text style={[styles.managerBtnText, !form.managerId && styles.managerBtnTextActive]}>None</Text>
+              </TouchableOpacity>
+              
+              {managers.map((m) => (
+                <TouchableOpacity 
+                  key={m.id}
+                  style={[styles.managerBtn, form.managerId === m.id && styles.managerBtnActive]}
+                  onPress={() => setForm({...form, managerId: m.id})}
+                >
+                  <View>
+                    <Text style={[styles.managerBtnText, form.managerId === m.id && styles.managerBtnTextActive]}>
+                      {m.firstName} {m.lastName}
+                    </Text>
+                    <Text style={[styles.managerRoleLabel, form.managerId === m.id && styles.managerRoleLabelActive]}>
+                      {m.role === 'ORG_ADMIN' ? 'Admin' : m.role}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {fetchingManagers && <Text style={styles.helperText}>Loading managers...</Text>}
           </View>
 
           <InputField 
@@ -250,7 +305,51 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textLight,
   },
   roleBtnTextActive: {
-    color: colors.white,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  managerList: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  managerBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: 10,
+    backgroundColor: colors.card,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  managerBtnActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+  },
+  managerBtnText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  managerBtnTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  managerRoleLabel: {
+    fontSize: 10,
+    color: colors.textLight,
+    marginTop: 2,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  managerRoleLabelActive: {
+    color: colors.primary,
+  },
+  helperText: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: 4,
   },
   submitBtn: {
     backgroundColor: colors.primary,

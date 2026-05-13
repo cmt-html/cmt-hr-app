@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, FlatList, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import api from '../services/api.service';
-import { ChevronLeft, Building2, CheckCircle2, XCircle, Ban, Users, BarChart3, Clock } from 'lucide-react-native';
+import { ChevronLeft, Building2, CheckCircle2, XCircle, Ban, Users, BarChart3, Clock, Plus } from 'lucide-react-native';
 
 const SuperAdminDashboardScreen = ({ navigation }) => {
   const { colors } = useTheme();
@@ -137,7 +137,12 @@ const SuperAdminDashboardScreen = ({ navigation }) => {
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Platform Admin</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('RegisterOrganization')} 
+          style={styles.addButton}
+        >
+          <Plus size={24} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -160,14 +165,14 @@ const SuperAdminDashboardScreen = ({ navigation }) => {
                 <Text style={styles.statLabel}>Total Orgs</Text>
               </View>
               <View style={styles.statCard}>
-                <Clock size={24} color={colors.warning} />
-                <Text style={styles.statVal}>{stats?.pendingOrgs || 0}</Text>
-                <Text style={styles.statLabel}>Pending</Text>
+                <BarChart3 size={24} color={colors.success} />
+                <Text style={styles.statVal}>${stats?.totalRevenue || 0}</Text>
+                <Text style={styles.statLabel}>MRR</Text>
               </View>
               <View style={styles.statCard}>
-                <Users size={24} color={colors.success} />
-                <Text style={styles.statVal}>{stats?.totalUsers || 0}</Text>
-                <Text style={styles.statLabel}>Total Users</Text>
+                <Clock size={24} color={colors.warning} />
+                <Text style={styles.statVal}>{stats?.trialOrgs || 0}</Text>
+                <Text style={styles.statLabel}>In Trial</Text>
               </View>
             </View>
 
@@ -201,6 +206,9 @@ const getStyles = (colors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     ...colors.shadow,
+  },
+  addButton: {
+    padding: 5,
   },
   headerTitle: {
     fontSize: 18,

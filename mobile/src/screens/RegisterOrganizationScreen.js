@@ -10,8 +10,9 @@ const RegisterOrganizationScreen = ({ navigation }) => {
   const styles = getStyles(colors);
   
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    orgName: '',
+    slug: '',
+    adminEmail: '',
     phone: '',
     address: '',
     adminFirstName: '',
@@ -21,18 +22,18 @@ const RegisterOrganizationScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    const { name, email, adminFirstName, adminLastName, adminPassword } = formData;
-    if (!name || !email || !adminFirstName || !adminLastName || !adminPassword) {
+    const { orgName, slug, adminEmail, adminFirstName, adminLastName, adminPassword } = formData;
+    if (!orgName || !slug || !adminEmail || !adminFirstName || !adminLastName || !adminPassword) {
       Alert.alert('Required Fields', 'Please fill in all mandatory fields.');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await api.post('/organizations/register', formData);
+      await api.post('/auth/register', formData);
       Alert.alert(
         'Success', 
-        'Registration submitted! Please wait for approval from our platform admin.',
+        'Registration successful! You can now log in to your dashboard.',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       );
     } catch (error) {
@@ -75,8 +76,20 @@ const RegisterOrganizationScreen = ({ navigation }) => {
                 style={styles.input}
                 placeholder="Organization Name"
                 placeholderTextColor="rgba(255,255,255,0.5)"
-                value={formData.name}
-                onChangeText={(text) => setFormData({...formData, name: text})}
+                value={formData.orgName}
+                onChangeText={(text) => setFormData({...formData, orgName: text})}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <MapPin size={20} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Organization Slug (e.g., cloudmojo)"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={formData.slug}
+                onChangeText={(text) => setFormData({...formData, slug: text.toLowerCase().replace(/\s/g, '')})}
+                autoCapitalize="none"
               />
             </View>
 
@@ -84,24 +97,12 @@ const RegisterOrganizationScreen = ({ navigation }) => {
               <Mail size={20} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Official Email"
+                placeholder="Admin Email"
                 placeholderTextColor="rgba(255,255,255,0.5)"
-                value={formData.email}
-                onChangeText={(text) => setFormData({...formData, email: text})}
+                value={formData.adminEmail}
+                onChangeText={(text) => setFormData({...formData, adminEmail: text})}
                 keyboardType="email-address"
                 autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Phone size={20} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Contact Phone"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                value={formData.phone}
-                onChangeText={(text) => setFormData({...formData, phone: text})}
-                keyboardType="phone-pad"
               />
             </View>
 
