@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  phone       String?
+  address     String?
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, DISABLED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  attendances Attendance[]
+  leaves      Leave[]
+  configs     WorkingConfig[]
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          String    @default("EMPLOYEE") // SUPER_ADMIN, ADMIN, MANAGER, EMPLOYEE, HR
+  designation   String?
+  department    String?
+  employeeId    String    @unique
+  dateOfJoining DateTime
+  emergencyContact     String?
+  emergencyContactName String?
+  profilePicture       String?
+  
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  managerId     String?
+  manager       User?     @relation("ManagerToSubordinate", fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  subordinates  User[]    @relation("ManagerToSubordinate")
+  attendances   Attendance[]
+  leaves        Leave[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  checkIn     DateTime
+  checkOut    DateTime?
+  location    String?
+  status      String   @default("PRESENT") // PRESENT, LATE, ABSENT
+  date        DateTime @default(now())
+}
+
+model Leave {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  type        String      // SICK, CASUAL, ANNUAL, MATERNITY, PATERNITY, WFH
+  startDate   DateTime
+  endDate     DateTime
+  reason      String
+  status      String      @default("PENDING") // PENDING, APPROVED, REJECTED
+  appliedAt   DateTime    @default(now())
+}
+
+model WorkingConfig {
+  id                String   @id @default(uuid())
+  organizationId    String?  @unique
+  organization      Organization? @relation(fields: [organizationId], references: [id])
+  windowStart       String   @default("08:00 AM")
+  windowEnd         String   @default("08:00 PM")
+  requiredHours     Int      @default(9)
+  minPresentMinutes Int      @default(500) // 8 hours 20 minutes
+  updatedAt         DateTime @updatedAt
+}
+

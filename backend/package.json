@@ -1,0 +1,25 @@
+{
+  "name": "cmt-hr-backend",
+  "version": "1.0.0",
+  "description": "Backend for CMT HR App",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^2.4.3",
+    "@prisma/client": "^4.11.0"
+  },
+  "devDependencies": {
+    "prisma": "^4.11.0",
+    "nodemon": "^2.0.21"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
+}
