@@ -7,6 +7,20 @@ import { attendanceService } from '../services/api.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator } from 'react-native';
 
+/** Parse strings like "09:00 AM" / "6:30 PM" into 24h hour and minute */
+const parse12HourTime = (timeStr) => {
+  const m = String(timeStr)
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ap = m[3].toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return { h, min };
+};
+
 const RegularizeScreen = ({ navigation, route }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -33,28 +47,27 @@ const RegularizeScreen = ({ navigation, route }) => {
       if (!savedUser) return;
       const user = JSON.parse(savedUser);
 
-      const baseDate = new Date(prefillDate);
+      const baseDate = new Date(prefillDate + 'T12:00:00');
 
-      const [inH, inM] = checkInTime.split(':');
-      const isPM = checkInTime.includes('PM');
-      const finalInH = isPM ? (parseInt(inH) % 12) + 12 : parseInt(inH) % 12;
+      const inParsed = parse12HourTime(checkInTime);
+      const outParsed = parse12HourTime(checkOutTime);
+      if (!inParsed || !outParsed) {
+        Alert.alert('Error', 'Please pick valid check-in and check-out times.');
+        return;
+      }
 
       const checkInDate = new Date(baseDate);
-      checkInDate.setHours(finalInH, parseInt(inM), 0);
-
-      const [outH, outM] = checkOutTime.split(':');
-      const isOutPM = checkOutTime.includes('PM');
-      const finalOutH = isOutPM ? (parseInt(outH) % 12) + 12 : parseInt(outH) % 12;
+      checkInDate.setHours(inParsed.h, inParsed.min, 0, 0);
 
       const checkOutDate = new Date(baseDate);
-      checkOutDate.setHours(finalOutH, parseInt(outM), 0);
+      checkOutDate.setHours(outParsed.h, outParsed.min, 0, 0);
 
       await attendanceService.regularize({
         userId: user.id,
-        date: baseDate,
-        checkIn: checkInDate,
-        checkOut: checkOutDate,
-        reason
+        date: baseDate.toISOString(),
+        checkIn: checkInDate.toISOString(),
+        checkOut: checkOutDate.toISOString(),
+        reason,
       });
 
       Alert.alert('Success', 'Regularization request submitted.');

@@ -12,6 +12,7 @@ const userSchema = new Schema({
     enum: ['SUPER_ADMIN', 'ORG_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER', 'EMPLOYEE'], 
     default: 'EMPLOYEE' 
   },
+  phone: String,
   designation: String,
   department: String,
   employeeId: { type: String, sparse: true },

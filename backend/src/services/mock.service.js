@@ -76,17 +76,23 @@ const initialData = {
 };
 
 const getDb = () => {
-  if (!fs.existsSync(MOCK_DATA_PATH)) {
-    fs.writeFileSync(MOCK_DATA_PATH, JSON.stringify(initialData, null, 2));
+  try {
+    if (!fs.existsSync(MOCK_DATA_PATH)) {
+      fs.writeFileSync(MOCK_DATA_PATH, JSON.stringify(initialData, null, 2));
+    }
+    const content = fs.readFileSync(MOCK_DATA_PATH, 'utf-8');
+    if (!content || content.trim() === '') return initialData;
+    let data = JSON.parse(content);
+    
+    if (!data.users || data.users.length < 5) {
+      data = initialData;
+      saveDb(data);
+    }
+    return data;
+  } catch (error) {
+    console.error('❌ Mock DB Error:', error.message);
+    return initialData;
   }
-  let data = JSON.parse(fs.readFileSync(MOCK_DATA_PATH));
-  
-  // If the file is missing users or out of date, populate it now
-  if (!data.users || data.users.length < 5) {
-    data = initialData;
-    saveDb(data);
-  }
-  return data;
 };
 
 const saveDb = (data) => {
@@ -114,6 +120,7 @@ const mockDb = {
     return newItem;
   },
   update: (collection, id, updates) => {
+    console.log(`📝 Updating ${collection}:${id}`, updates);
     const data = getDb();
     if (!data[collection]) return null;
     const index = data[collection].findIndex(item => item.id === id);

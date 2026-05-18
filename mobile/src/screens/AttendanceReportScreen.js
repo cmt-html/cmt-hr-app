@@ -276,14 +276,15 @@ const AttendanceReportScreen = ({ navigation }) => {
             </View>
           ) : (
             reportData.map((record, index) => {
-              const status = getStatusStyle(record.detailedStatus);
+              const status = getStatusStyle(record.detailedStatus || record.status);
+              const u = record.user || {};
               return (
                 <TouchableOpacity
                   key={record.id || index}
                   style={styles.reportCard}
                   onPress={() => navigation.navigate('Attendance', {
                     userId: record.userId,
-                    userName: `${record.user.firstName} ${record.user.lastName}`
+                    userName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Employee',
                   })}
                 >
                   <View style={styles.cardHeader}>
@@ -292,8 +293,8 @@ const AttendanceReportScreen = ({ navigation }) => {
                         <User size={16} color={colors.primary} />
                       </View>
                       <View>
-                        <Text style={styles.userName}>{record.user.firstName} {record.user.lastName}</Text>
-                        <Text style={styles.deptText}>{record.user.department} • {record.user.employeeId}</Text>
+                        <Text style={styles.userName}>{u.firstName || '—'} {u.lastName || ''}</Text>
+                        <Text style={styles.deptText}>{u.department || '—'} • {u.employeeId || '—'}</Text>
                       </View>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
@@ -322,7 +323,13 @@ const AttendanceReportScreen = ({ navigation }) => {
 
                   <View style={styles.cardFooter}>
                     <Text style={styles.dateText}>
-                      {new Date(record.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {record.date || record.checkIn
+                        ? new Date(record.date || record.checkIn).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : '—'}
                     </Text>
                     <View style={{ flex: 1, marginLeft: 10, alignItems: 'flex-end' }}>
                       <LocationDisplay location={record.location} colors={colors} />

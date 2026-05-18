@@ -1,26 +1,46 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
+  Dimensions,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { authService } from '../services/api.service';
-import { Mail, Lock, ChevronRight } from 'lucide-react-native';
+import { Mail, Lock, ChevronRight, Sparkles } from 'lucide-react-native';
+import CloudMojoLogo from '../components/CloudMojoLogo';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const LOGO_W = Math.min(SCREEN_W - 56, 200);
+const TITLE_SIZE = SCREEN_W < 360 ? 28 : SCREEN_W < 400 ? 32 : 34;
 
 const LoginScreen = ({ navigation }) => {
   const { colors } = useTheme();
-  const styles = getStyles(colors);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
+
+  const styles = getStyles(colors, TITLE_SIZE);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      alert('Please enter credentials');
+      alert('Please enter your work email and password.');
       return;
     }
-    
+
     setLoading(true);
     try {
-      const data = await authService.login(email, password);
+      await authService.login(email.trim(), password);
       navigation.replace('Main');
     } catch (error) {
       console.error(error);
@@ -33,207 +53,337 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       <LinearGradient
-        colors={colors.primaryGradient}
+        colors={colors.authBackgroundGradient}
+        locations={[0, 0.42, 1]}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0.75, y: 1 }}
       />
-      
-      <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+
+      <View style={[styles.orb, styles.orbTop]} />
+      <View style={[styles.orb, styles.orbBottom]} />
+
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardView}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <View style={styles.headerSection}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>CMT</Text>
-            </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to manage your workplace</Text>
-          </View>
-
-          <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
-              <Mail size={20} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Work Email"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Lock size={20} color="rgba(255,255,255,0.7)" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-            </View>
-
-            <TouchableOpacity style={styles.forgotBtn}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
-              <Text style={styles.loginBtnText}>SIGN IN</Text>
-              <View style={styles.arrowIcon}>
-                <ChevronRight size={20} color={colors.primary} />
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.hero}>
+              <View style={styles.logoWrap}>
+                <CloudMojoLogo width={LOGO_W} wordmarkColor={colors.authWordmark} />
               </View>
-            </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.registerLink} 
-              onPress={() => navigation.navigate('RegisterOrganization')}
+              <View style={styles.pillRow}>
+                <Sparkles size={14} color={colors.secondary} />
+                <Text style={styles.pillText}>AI-Powered HR Suite</Text>
+              </View>
+
+              <Text style={styles.title}>Welcome back</Text>
+              <Text style={styles.subtitle}>
+                The intelligent way to manage your modern workforce.
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.authGlass,
+                  borderColor: colors.authGlassBorder,
+                },
+              ]}
             >
-              <Text style={styles.registerLinkText}>New Organization? <Text style={styles.registerAction}>Register Now</Text></Text>
-            </TouchableOpacity>
-          </View>
+              <Text style={styles.cardTitle}>Secure Login</Text>
 
+              <View
+                style={[styles.inputWrap, focusedField === 'email' && styles.inputWrapFocused]}
+              >
+                <Mail
+                  size={20}
+                  color={focusedField === 'email' ? colors.secondary : 'rgba(255,255,255,0.45)'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Work email"
+                  placeholderTextColor="rgba(255,255,255,0.38)"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Powered by CloudMojo Tech</Text>
-          </View>
+              <View
+                style={[styles.inputWrap, focusedField === 'password' && styles.inputWrapFocused]}
+              >
+                <Lock
+                  size={20}
+                  color={focusedField === 'password' ? colors.secondary : 'rgba(255,255,255,0.45)'}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="rgba(255,255,255,0.38)"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.forgotBtn} activeOpacity={0.7}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.primaryBtnOuter}
+                onPress={handleLogin}
+                disabled={loading}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={colors.primaryGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.primaryBtnGradient, loading && { opacity: 0.92 }]}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Text style={styles.primaryBtnText}>Continue</Text>
+                      <ChevronRight size={20} color="#FFFFFF" style={styles.primaryBtnChevron} />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.registerLink}
+                onPress={() => navigation.navigate('RegisterOrganization')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.registerLinkText}>
+                  New here? <Text style={styles.registerAction}>Create organization</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.footer}>Trusted by 500+ Enterprises</Text>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
 };
 
-const getStyles = (colors) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-    paddingHorizontal: 30,
-    justifyContent: 'center',
-  },
-  headerSection: {
-    alignItems: 'center',
-    marginBottom: 50,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 2,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '500',
-  },
-  formSection: {
-    marginTop: 20,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 18,
-    marginBottom: 20,
-    paddingHorizontal: 20,
-    height: 64,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  inputIcon: {
-    marginRight: 15,
-  },
-  input: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginBottom: 30,
-  },
-  forgotText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  loginBtn: {
-    backgroundColor: '#FFFFFF',
-    height: 64,
-    borderRadius: 18,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...colors.shadow,
-    shadowOpacity: 0.3,
-  },
-  loginBtnText: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  arrowIcon: {
-    position: 'absolute',
-    right: 20,
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 82, 204, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  registerLink: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  registerLinkText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  registerAction: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    textDecorationLine: 'underline',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  footerText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-});
+const getStyles = (colors, titleSize) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    safe: {
+      flex: 1,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      minHeight: SCREEN_H * 0.88,
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 28,
+      justifyContent: 'center',
+    },
+    orb: {
+      position: 'absolute',
+      borderRadius: 999,
+    },
+    orbTop: {
+      width: SCREEN_W * 1.1,
+      height: SCREEN_W * 1.1,
+      top: -SCREEN_W * 0.55,
+      right: -SCREEN_W * 0.35,
+      backgroundColor: colors.authOrbSecondary,
+      opacity: 0.35,
+    },
+    orbBottom: {
+      width: SCREEN_W * 0.85,
+      height: SCREEN_W * 0.85,
+      bottom: -SCREEN_W * 0.35,
+      left: -SCREEN_W * 0.25,
+      backgroundColor: colors.authOrb,
+      opacity: 0.5,
+    },
+    hero: {
+      alignItems: 'center',
+      marginBottom: 28,
+    },
+    logoWrap: {
+      marginBottom: 20,
+    },
+    pillRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.07)',
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 100,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.12)',
+      marginBottom: 20,
+    },
+    pillText: {
+      marginLeft: 8,
+      color: colors.secondary,
+      fontSize: 11,
+      fontWeight: '900',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+    },
+    title: {
+      fontSize: titleSize,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      marginBottom: 10,
+      letterSpacing: -0.8,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 16,
+      lineHeight: 24,
+      color: 'rgba(255,255,255,0.5)',
+      fontWeight: '500',
+      textAlign: 'center',
+      maxWidth: 300,
+      paddingHorizontal: 8,
+    },
+    card: {
+      borderRadius: 20,
+      borderWidth: 1,
+      paddingHorizontal: 20,
+      paddingTop: 22,
+      paddingBottom: 22,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 16 },
+          shadowOpacity: 0.25,
+          shadowRadius: 24,
+        },
+        android: { elevation: 10 },
+      }),
+    },
+    cardTitle: {
+      fontSize: 12,
+      fontWeight: '900',
+      color: 'rgba(255,255,255,0.4)',
+      letterSpacing: 2,
+      textTransform: 'uppercase',
+      marginBottom: 22,
+      textAlign: 'center',
+    },
+    inputWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+      borderRadius: 14,
+      marginBottom: 12,
+      paddingHorizontal: 16,
+      height: 52,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.18)',
+    },
+    inputWrapFocused: {
+      borderColor: `${colors.secondary}CC`,
+    },
+    inputIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    forgotBtn: {
+      alignSelf: 'flex-end',
+      marginBottom: 18,
+      marginTop: 2,
+    },
+    forgotText: {
+      color: colors.secondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    primaryBtnOuter: {
+      borderRadius: 14,
+      overflow: 'hidden',
+      ...Platform.select({
+        ios: {
+          shadowColor: colors.primary,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.35,
+          shadowRadius: 16,
+        },
+        android: { elevation: 6 },
+      }),
+    },
+    primaryBtnGradient: {
+      height: 52,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+    },
+    primaryBtnText: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '700',
+      letterSpacing: 0.2,
+    },
+    primaryBtnChevron: {
+      marginLeft: 6,
+    },
+    registerLink: {
+      marginTop: 20,
+      alignItems: 'center',
+    },
+    registerLinkText: {
+      color: 'rgba(255,255,255,0.45)',
+      fontSize: 14,
+      fontWeight: '500',
+      textAlign: 'center',
+    },
+    registerAction: {
+      color: '#FFFFFF',
+      fontWeight: '900',
+    },
+    footer: {
+      marginTop: 28,
+      textAlign: 'center',
+      color: 'rgba(255,255,255,0.2)',
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 2,
+      textTransform: 'uppercase',
+    },
+  });
 
 export default LoginScreen;

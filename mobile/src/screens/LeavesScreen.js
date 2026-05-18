@@ -1,25 +1,41 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Dimensions, StatusBar, Platform, ActivityIndicator } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  ScrollView, 
+  TouchableOpacity, 
+  Dimensions, 
+  StatusBar, 
+  Platform, 
+  ActivityIndicator 
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
 import { leaveService } from '../services/api.service';
-import { Calendar, Plus, ChevronRight, Briefcase, ChevronLeft } from 'lucide-react-native';
+import { Calendar, Plus, ChevronRight, Briefcase, ChevronLeft, Clock, Info } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
-const StatBox = ({ label, value, type, navigation, styles }) => (
+const StatBox = ({ label, value, type, navigation, colors, isDarkMode, styles }) => (
   <TouchableOpacity 
-    style={styles.statBox}
+    style={[
+      styles.statBox, 
+      { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF' }
+    ]}
     onPress={() => navigation.navigate('LeaveDetails', { type })}
+    activeOpacity={0.7}
   >
-    <Text style={styles.statValue}>{value}</Text>
+    <Text style={[styles.statValue, { color: colors.primary }]}>{value}</Text>
     <Text style={styles.statLabel}>{label}</Text>
   </TouchableOpacity>
 );
 
 const LeavesScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
-  const styles = getStyles(colors);
+  const styles = getStyles(colors, isDarkMode);
   const isManagerMode = route.params?.mode === 'manager';
   
   const [requests, setRequests] = React.useState([]);
@@ -33,27 +49,28 @@ const LeavesScreen = ({ navigation, route }) => {
   });
 
   React.useEffect(() => {
-    const init = async () => {
-      try {
-        setLoading(true);
-        const savedUser = await AsyncStorage.getItem('userData');
-        if (savedUser) {
-          const user = JSON.parse(savedUser);
-          setUserData(user);
-          if (isManagerMode) {
-            await fetchRequests(user.id);
-          } else {
-            await fetchUserLeaveData(user.id);
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
     init();
   }, [isManagerMode]);
+
+  const init = async () => {
+    try {
+      setLoading(true);
+      const savedUser = await AsyncStorage.getItem('userData');
+      if (savedUser) {
+        const user = JSON.parse(savedUser);
+        setUserData(user);
+        if (isManagerMode) {
+          await fetchRequests(user.id);
+        } else {
+          await fetchUserLeaveData(user.id);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchUserLeaveData = async (userId) => {
     try {
@@ -86,234 +103,323 @@ const LeavesScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {isManagerMode && (
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 15 }}>
-              <ChevronLeft size={24} color={colors.text} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Immersive Header */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={colors.primaryGradient}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <SafeAreaView edges={['top']} style={styles.headerTop}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <ChevronLeft size={24} color="#FFFFFF" />
             </TouchableOpacity>
-          )}
-          <Text style={styles.headerTitle}>{isManagerMode ? 'Team Approvals' : 'Leaves & WFH'}</Text>
-        </View>
+            <Text style={styles.headerTitle}>{isManagerMode ? 'Team Approvals' : 'Attendance Hub'}</Text>
+            {!isManagerMode && (
+              <TouchableOpacity 
+                style={styles.addBtn}
+                onPress={() => navigation.navigate('ApplyLeave')}
+              >
+                <Plus size={22} color={colors.primary} strokeWidth={3} />
+              </TouchableOpacity>
+            )}
+            {isManagerMode && <View style={{ width: 44 }} />}
+          </SafeAreaView>
+          
+          <View style={styles.heroSection}>
+            <Text style={styles.heroTitle}>{isManagerMode ? 'Request Center' : 'Leave Management'}</Text>
+            <Text style={styles.heroSubtitle}>
+              {isManagerMode ? 'Manage your team\'s time-off' : 'Track and plan your work sessions'}
+            </Text>
+          </View>
+        </LinearGradient>
+        
         {!isManagerMode && (
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={() => navigation.navigate('ApplyLeave')}
-          >
-            <Plus size={24} color={colors.white} />
-          </TouchableOpacity>
+          <View style={styles.summaryFloating}>
+            <StatBox label="Taken" value={leaveStats?.taken?.total || 0} type="taken" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} />
+            <StatBox label="Pending" value={leaveStats?.pending?.total || 0} type="pending" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} />
+            <StatBox label="Available" value={leaveStats?.available?.ANNUAL || 0} type="available" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} />
+          </View>
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+
+      <ScrollView contentContainerStyle={[styles.scrollContent, !isManagerMode && { paddingTop: 40 }]} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <View style={{ height: 200, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Fetching records...</Text>
           </View>
         ) : (
           <>
-            {!isManagerMode && (
-              <View style={styles.summaryGrid}>
-                <StatBox label="Taken" value={leaveStats?.taken?.total || 0} type="taken" navigation={navigation} styles={styles} />
-                <StatBox label="Pending" value={leaveStats?.pending?.total || 0} type="pending" navigation={navigation} styles={styles} />
-                <StatBox label="Available" value={leaveStats?.available?.ANNUAL || 0} type="available" navigation={navigation} styles={styles} />
-              </View>
-            )}
-
-        {isManagerMode ? (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Pending Approvals ({requests.length})</Text>
-            </View>
-            
-            {requests.map((item) => (
-              <View key={item.id} style={styles.requestCard}>
-                <View style={styles.requestHeader}>
-                  <View style={styles.avatarMini}>
-                    <Text style={styles.avatarMiniText}>{item.user.firstName?.[0]}{item.user.lastName?.[0]}</Text>
-                  </View>
-                  <View style={styles.requestInfo}>
-                    <Text style={styles.employeeName}>{item.user.firstName} {item.user.lastName}</Text>
-                    <Text style={styles.requestType}>{item.type.replace('_', ' ')} Request</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: colors.warning + '15' }]}>
-                    <Text style={[styles.statusText, { color: colors.warning }]}>PENDING</Text>
-                  </View>
+            {isManagerMode ? (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>PENDING APPROVALS ({requests.length})</Text>
                 </View>
-
-                <View style={styles.reasonContainer}>
-                  <Text style={styles.reasonLabel}>Reason:</Text>
-                  <Text style={styles.reasonText}>{item.reason || 'No reason provided'}</Text>
-                </View>
-
-                <View style={styles.dateRangeBox}>
-                  <Calendar size={14} color={colors.textLight} />
-                  <Text style={styles.dateRangeText}>
-                    {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - {new Date(item.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                  </Text>
-                </View>
-
-                <View style={styles.actionRow}>
-                  <TouchableOpacity 
-                    style={[styles.actionBtn, { backgroundColor: colors.error + '10' }]}
-                    onPress={() => handleStatusUpdate(item.id, 'REJECTED')}
-                  >
-                    <Text style={[styles.actionBtnText, { color: colors.error }]}>Reject</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.actionBtn, { backgroundColor: colors.success }]}
-                    onPress={() => handleStatusUpdate(item.id, 'APPROVED')}
-                  >
-                    <Text style={[styles.actionBtnText, { color: colors.white }]}>Approve</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-            {requests.length === 0 && !loading && (
-              <View style={styles.noDataCard}>
-                <Text style={styles.noDataText}>No pending requests to review.</Text>
-              </View>
-            )}
-          </>
-        ) : (
-          <>
-            <TouchableOpacity 
-              style={styles.wfhCard}
-              onPress={() => navigation.navigate('ApplyLeave', { type: 'WFH' })}
-            >
-              <View style={styles.wfhIconBox}>
-                <Briefcase size={24} color={colors.primary} />
-              </View>
-              <View style={styles.wfhContent}>
-                <Text style={styles.wfhTitle}>Work From Home</Text>
-                <Text style={styles.wfhSubtitle}>Apply for remote work session</Text>
-              </View>
-              <ChevronRight size={20} color={colors.textLight} />
-            </TouchableOpacity>
-
-            <Text style={styles.sectionTitle}>Recent Requests</Text>
-            
-            {userHistory.map((item, index) => {
-              const startDate = new Date(item.startDate);
-              const endDate = new Date(item.endDate);
-              const diffTime = Math.abs(endDate - startDate);
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-              
-              const statusColor = item.status === 'APPROVED' ? colors.success : item.status === 'REJECTED' ? colors.error : colors.warning;
-              const statusBg = item.status === 'APPROVED' ? 'rgba(54, 179, 126, 0.15)' : item.status === 'REJECTED' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)';
-
-              return (
-                <View key={item.id || index} style={styles.requestCard}>
-                  <View style={styles.requestHeader}>
-                    <View style={styles.requestInfo}>
-                      <Text style={styles.requestType}>{item.type.replace('_', ' ')}</Text>
-                      <Text style={styles.requestDate}>
-                        {startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {endDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} ({diffDays} {diffDays === 1 ? 'Day' : 'Days'})
-                      </Text>
+                
+                {requests.map((item) => (
+                  <View key={item.id} style={styles.requestCard}>
+                    <View style={styles.requestHeader}>
+                      <View style={styles.avatarMini}>
+                        <Text style={styles.avatarMiniText}>
+                          {(item.user?.firstName?.[0] || '?')}{(item.user?.lastName?.[0] || '?')}
+                        </Text>
+                      </View>
+                      <View style={styles.requestInfo}>
+                        <Text style={styles.employeeName}>
+                          {item.user?.firstName || 'Unknown'} {item.user?.lastName || ''}
+                        </Text>
+                        <Text style={styles.requestType}>{(item.type || '').replace('_', ' ')} Request</Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: '#FFFBEB' }]}>
+                        <Text style={[styles.statusText, { color: '#92400E' }]}>PENDING</Text>
+                      </View>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-                      <Text style={[styles.statusText, { color: statusColor }]}>{item.status}</Text>
+
+                    <View style={styles.reasonContainer}>
+                      <Text style={styles.reasonLabel}>Reason:</Text>
+                      <Text style={styles.reasonText}>{item.reason || 'No reason provided'}</Text>
+                    </View>
+
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaItem}>
+                        <Calendar size={14} color={colors.primary} />
+                        <Text style={styles.metaText}>
+                          {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - {new Date(item.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.actionRow}>
+                      <TouchableOpacity 
+                        style={[styles.actionBtn, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
+                        onPress={() => handleStatusUpdate(item.id, 'REJECTED')}
+                      >
+                        <Text style={[styles.actionBtnText, { color: colors.error }]}>Reject</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+                        onPress={() => handleStatusUpdate(item.id, 'APPROVED')}
+                      >
+                        <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Approve Request</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
+                ))}
+                {requests.length === 0 && (
+                  <View style={styles.noDataCard}>
+                    <Info size={32} color={colors.textLight} strokeWidth={1.5} />
+                    <Text style={styles.noDataText}>No pending requests to review.</Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <>
+                <TouchableOpacity 
+                  style={styles.wfhCard}
+                  onPress={() => navigation.navigate('ApplyLeave', { type: 'WFH' })}
+                  activeOpacity={0.7}
+                >
+                  <LinearGradient
+                    colors={['rgba(11, 74, 236, 0.08)', 'rgba(11, 74, 236, 0.02)']}
+                    style={styles.wfhIconBox}
+                  >
+                    <Briefcase size={22} color={colors.primary} />
+                  </LinearGradient>
+                  <View style={styles.wfhContent}>
+                    <Text style={styles.wfhTitle}>Work From Home</Text>
+                    <Text style={styles.wfhSubtitle}>Apply for remote work session</Text>
+                  </View>
+                  <View style={styles.chevronBox}>
+                    <ChevronRight size={18} color={colors.textLight} />
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
                 </View>
-              );
-            })}
-            
-            {userHistory.length === 0 && !loading && (
-              <View style={styles.noDataCard}>
-                <Text style={styles.noDataText}>No recent leave requests found.</Text>
-              </View>
+                
+                {userHistory.map((item, index) => {
+                  const startDate = new Date(item.startDate);
+                  const endDate = new Date(item.endDate);
+                  const diffTime = Math.abs(endDate - startDate);
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                  
+                  const statusColor = item.status === 'APPROVED' ? colors.success : item.status === 'REJECTED' ? colors.error : colors.warning;
+                  const statusBg = item.status === 'APPROVED' ? '#ECFDF5' : item.status === 'REJECTED' ? '#FEF2F2' : '#FFFBEB';
+                  const labelColor = item.status === 'APPROVED' ? '#065F46' : item.status === 'REJECTED' ? '#991B1B' : '#92400E';
+
+                  return (
+                    <View key={item.id || index} style={styles.historyCard}>
+                      <View style={styles.historyTop}>
+                        <View style={styles.historyInfo}>
+                          <Text style={styles.historyType}>{(item.type || 'LEAVE').replace('_', ' ')}</Text>
+                          <View style={styles.historyMeta}>
+                            <Clock size={12} color={colors.textLight} />
+                            <Text style={styles.historyDate}>
+                              {startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {endDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                            </Text>
+                            <Text style={styles.historyDuration}>• {diffDays} {diffDays === 1 ? 'Day' : 'Days'}</Text>
+                          </View>
+                        </View>
+                        <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+                          <Text style={[styles.statusText, { color: labelColor }]}>{item.status}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+                
+                {userHistory.length === 0 && (
+                  <View style={styles.noDataCard}>
+                    <Info size={32} color={colors.textLight} strokeWidth={1.5} />
+                    <Text style={styles.noDataText}>No recent leave requests found.</Text>
+                  </View>
+                )}
+              </>
             )}
           </>
         )}
-          </>
-        )}
+        <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
-
-
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  header: {
-    padding: 24,
-    backgroundColor: colors.surface,
+  headerWrapper: {
+    marginBottom: 20,
+    zIndex: 10,
+  },
+  headerGradient: {
+    paddingBottom: 60,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...colors.shadow,
-    zIndex: 10,
+    paddingTop: 10,
+    marginBottom: 24,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: colors.text,
-  },
-  addButton: {
-    backgroundColor: colors.primary,
+  backBtn: {
     width: 44,
     height: 44,
     borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    ...colors.shadow,
   },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 40,
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  addBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    ...colors.premiumShadow,
   },
-  summaryGrid: {
+  heroSection: {
+    alignItems: 'center',
+  },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  summaryFloating: {
+    position: 'absolute',
+    bottom: -30,
+    left: 20,
+    right: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
+    gap: 12,
   },
   statBox: {
-    backgroundColor: colors.surface,
-    width: (width - 64) / 3,
+    flex: 1,
     padding: 16,
-    borderRadius: 20,
+    borderRadius: 24,
     alignItems: 'center',
-    ...colors.shadow,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
   },
   statValue: {
     fontSize: 22,
     fontWeight: '900',
-    color: colors.primary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textLight,
     fontWeight: '800',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  scrollContent: {
+    padding: 24,
+  },
+  loadingBox: {
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textLight,
+  },
+  sectionHeader: {
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: colors.textLight,
+    letterSpacing: 1.5,
   },
   wfhCard: {
-    backgroundColor: colors.surface,
-    padding: 20,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    padding: 16,
     borderRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
-    ...colors.shadow,
+    marginBottom: 32,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
   },
   wfhIconBox: {
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: 'rgba(0, 82, 204, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -332,91 +438,110 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textLight,
     fontWeight: '600',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.text,
-    marginBottom: 16,
+  chevronBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: isDarkMode ? '#334155' : '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  requestCard: {
-    backgroundColor: colors.surface,
-    padding: 20,
+  historyCard: {
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    padding: 16,
     borderRadius: 24,
-    marginBottom: 16,
-    ...colors.shadow,
+    marginBottom: 12,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
   },
-  requestHeader: {
+  historyTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  requestInfo: {
+  historyInfo: {
     flex: 1,
   },
-  requestType: {
+  historyType: {
     fontSize: 16,
     fontWeight: '800',
     color: colors.text,
     marginBottom: 4,
+    textTransform: 'capitalize',
   },
-  requestDate: {
-    fontSize: 13,
+  historyMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  historyDate: {
+    fontSize: 12,
     color: colors.textLight,
     fontWeight: '600',
   },
-  employeeName: {
-    fontSize: 14,
-    fontWeight: '900',
+  historyDuration: {
+    fontSize: 12,
     color: colors.primary,
-    marginBottom: 4,
-    textTransform: 'uppercase',
+    fontWeight: '700',
   },
-  actionRow: {
+  requestCard: {
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    padding: 20,
+    borderRadius: 32,
+    marginBottom: 16,
+    ...colors.premiumShadow,
+  },
+  requestHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  actionBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  actionBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '900',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   avatarMini: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 82, 204, 0.1)',
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(11, 74, 236, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   avatarMiniText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '900',
     color: colors.primary,
   },
+  requestInfo: {
+    flex: 1,
+  },
+  employeeName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  requestType: {
+    fontSize: 12,
+    color: colors.textLight,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   reasonContainer: {
-    marginTop: 12,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#F8FAFC',
     padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.02)',
-    borderRadius: 12,
+    borderRadius: 16,
+    marginBottom: 16,
   },
   reasonLabel: {
     fontSize: 10,
@@ -429,17 +554,36 @@ const getStyles = (colors) => StyleSheet.create({
     fontSize: 13,
     color: colors.text,
     lineHeight: 18,
+    fontWeight: '500',
   },
-  dateRangeBox: {
+  metaRow: {
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 12,
   },
-  dateRangeText: {
+  metaText: {
     fontSize: 13,
-    color: colors.textLight,
+    color: colors.text,
     fontWeight: '700',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
   },
   noDataCard: {
     padding: 40,
@@ -450,7 +594,10 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textLight,
     fontSize: 14,
     fontWeight: '600',
+    marginTop: 12,
+    textAlign: 'center',
   },
 });
 
 export default LeavesScreen;
+

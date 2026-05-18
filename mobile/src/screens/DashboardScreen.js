@@ -1,626 +1,531 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Dimensions, StatusBar, Platform, ActivityIndicator, Alert, RefreshControl } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location';
+import React, { useState, useEffect } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  ScrollView, 
+  TouchableOpacity, 
+  StatusBar, 
+  Dimensions, 
+  RefreshControl,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Alert
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
-import { sendLocalNotification } from '../utils/notifications';
-import api, { attendanceService, leaveService } from '../services/api.service';
-import { Calendar, Clock, UserCheck, Briefcase, ChevronRight, Bell, AlertCircle, BarChart3, Shield } from 'lucide-react-native';
-
+import { 
+  Bell, 
+  UserCheck, 
+  Calendar, 
+  Briefcase, 
+  Clock, 
+  ArrowUpRight, 
+  Zap, 
+  ChevronRight, 
+  Sparkles,
+  CreditCard
+} from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
+import { attendanceService, leaveService } from '../services/api.service';
 
 const { width } = Dimensions.get('window');
 
 const DashboardScreen = ({ navigation }) => {
-  const { isDarkMode, colors } = useTheme();
-  const styles = getStyles(colors, isDarkMode);
-  const [userData, setUserData] = React.useState(null);
-  const [isCheckedIn, setIsCheckedIn] = React.useState(false);
-  const [seconds, setSeconds] = React.useState(0);
-  const [totalTodaySeconds, setTotalTodaySeconds] = React.useState(0);
-  const [isLoadingLocation, setIsLoadingLocation] = React.useState(false);
-  const [leaveBalance, setLeaveBalance] = React.useState(0);
-  const [attendanceCount, setAttendanceCount] = React.useState('0/0');
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [config, setConfig] = React.useState(null);
-  const timerRef = React.useRef(null);
-
-  const syncWithBackend = async (userId) => {
-    try {
-      const history = await attendanceService.getHistory(userId);
-      const activeSession = history.find(r => !r.checkOut);
-      const latest = history[0];
-      
-      // Attendance Stats
-      const today = new Date();
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      const monthlyRecords = history.filter(r => new Date(r.date) >= monthStart);
-      const presentDays = monthlyRecords.filter(r => r.status === 'PRESENT').length;
-      const totalWorkingDays = 22; // Hardcoded target for now
-      setAttendanceCount(`${presentDays}/${totalWorkingDays}`);
-
-      // Config Stats
-      const configData = await api.get('/config/working-hours');
-      setConfig(configData.data);
-
-      // Leave Stats
-      const leaveStats = await leaveService.getStats(userId);
-      setLeaveBalance(leaveStats.available.ANNUAL);
-
-      if (activeSession) {
-        // Active session found on backend
-        const startTime = new Date(activeSession.checkIn).getTime();
-        const currentTime = Date.now();
-        const elapsed = Math.floor((currentTime - startTime) / 1000);
-        
-        setIsCheckedIn(true);
-        setSeconds(elapsed);
-        
-        // Update local persistence
-        await AsyncStorage.setItem('@check_in_status', 'true');
-        await AsyncStorage.setItem('@check_in_time', startTime.toString());
-      } else {
-        setIsCheckedIn(false);
-        // Calculate total seconds for today from history
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        
-        const todayRecords = history.filter(r => new Date(r.date) >= startOfToday);
-        let total = 0;
-        todayRecords.forEach(r => {
-          if (r.checkIn && r.checkOut) {
-            total += Math.floor((new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) / 1000);
-          }
-        });
-        
-        setTotalTodaySeconds(total);
-        setSeconds(total);
-        await AsyncStorage.setItem('@total_seconds_today', total.toString());
-      }
-    } catch (error) {
-      console.error('Failed to sync attendance:', error);
-    }
-  };
-
-  const onRefresh = React.useCallback(async () => {
-    if (userData) {
-      setRefreshing(true);
-      await syncWithBackend(userData.id);
-      setRefreshing(false);
-    }
-  }, [userData]);
+  const { colors, isDarkMode } = useTheme();
+  
+  const [userData, setUserData] = useState(null);
+  const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [isOnBreak, setIsOnBreak] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [leaveBalance, setLeaveBalance] = useState(0);
+  const [presentDays, setPresentDays] = useState(0);
+  const [pulseAnim] = useState(new Animated.Value(1));
 
   useFocusEffect(
     React.useCallback(() => {
       const init = async () => {
-        const savedUser = await AsyncStorage.getItem('userData');
-        if (savedUser) {
-          const user = JSON.parse(savedUser);
-          setUserData(user);
-          await syncWithBackend(user.id);
+        try {
+          const savedUser = await AsyncStorage.getItem('userData');
+          if (savedUser) {
+            const user = JSON.parse(savedUser);
+            setUserData(user);
+            await syncWithBackend(user.id);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoading(false);
         }
       };
       init();
     }, [])
   );
 
-  React.useEffect(() => {
-    if (isCheckedIn) {
-      timerRef.current = setInterval(() => {
-        setSeconds(prev => prev + 1);
+  useEffect(() => {
+    let interval;
+    if (isCheckedIn && !isOnBreak) {
+      interval = setInterval(() => {
+        setTimer(prev => prev + 1);
       }, 1000);
-    } else {
-      clearInterval(timerRef.current);
     }
-    return () => clearInterval(timerRef.current);
-  }, [isCheckedIn]);
+    return () => clearInterval(interval);
+  }, [isCheckedIn, isOnBreak]);
 
-  const formatTime = (totalSeconds) => {
-    const hrs = Math.floor(totalSeconds / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 1500,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease)
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease)
+        })
+      ])
+    ).start();
+  }, []);
 
-  const getInitials = (firstName, lastName) => {
-    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
+  const syncWithBackend = async (userId) => {
+    try {
+      const history = await attendanceService.getHistory(userId);
+      if (history && history.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const todayRecord = history.find(r => r.date?.startsWith(today));
+        
+        if (todayRecord && !todayRecord.checkOut) {
+          setIsCheckedIn(true);
+          const start = new Date(todayRecord.checkIn).getTime();
+          const now = new Date().getTime();
+          setTimer(Math.floor((now - start) / 1000));
+        }
+        setPresentDays(history.filter(r => r.status === 'PRESENT').length);
+      }
+
+      const leaveStats = await leaveService.getStats(userId);
+      if (leaveStats) setLeaveBalance(leaveStats.available?.ANNUAL || 0);
+    } catch (error) {
+      console.error('Sync Error:', error);
+    }
   };
 
   const handleCheckIn = async () => {
-    if (isLoadingLocation || !userData) return;
-    
-    setIsLoadingLocation(true);
     try {
-      console.log('--- Local Attendance Process Started ---');
-      
-      let addressStr = 'Remote';
-      try {
-        const location = await Promise.race([
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
-          new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 2000))
-        ]);
-        if (location) {
-          addressStr = `${location.coords.latitude.toFixed(2)}, ${location.coords.longitude.toFixed(2)}`;
-        }
-      } catch (e) {
-        console.warn('Using Remote status');
-      }
-
-      if (isCheckedIn) {
-        const savedTime = await AsyncStorage.getItem('@check_in_time');
-        const startTime = parseInt(savedTime, 10);
-        const sessionDuration = Math.floor((Date.now() - startTime) / 1000);
-        const newTotal = totalTodaySeconds + sessionDuration;
-
-        await AsyncStorage.setItem('@total_seconds_today', newTotal.toString());
-        await AsyncStorage.removeItem('@check_in_status');
-        await AsyncStorage.removeItem('@check_in_time');
-        
-        setTotalTodaySeconds(newTotal);
-        setSeconds(newTotal);
-        setIsCheckedIn(false);
-        sendLocalNotification('Checked Out', 'Local session saved.');
-      } else {
-        const startTime = Date.now().toString();
-        await AsyncStorage.setItem('@check_in_status', 'true');
-        await AsyncStorage.setItem('@check_in_time', startTime);
-        
+      if (!isCheckedIn) {
+        await attendanceService.checkIn(userData.id, 'Remote Office');
         setIsCheckedIn(true);
-        sendLocalNotification('Checked In', 'Local timer started.');
+        setTimer(0);
+      } else {
+        await attendanceService.checkOut(userData.id);
+        setIsCheckedIn(false);
+        setIsOnBreak(false);
+        setTimer(0);
       }
-    } catch (error) {
-      console.error('Local attendance failed:', error);
-      Alert.alert('Error', 'Failed to update attendance locally.');
-    } finally {
-      setIsLoadingLocation(false);
+    } catch (e) {
+      Alert.alert('Error', 'Attendance action failed');
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (userData) await syncWithBackend(userData.id);
+    setRefreshing(false);
+  };
+
+  const formatTime = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+      </View>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-        }
-      >
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{userData ? `${userData.firstName} ${userData.lastName}` : 'User'}</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.notificationBtn}>
-              <Bell size={22} color={colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.profileImage}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <Text style={styles.profileInitial}>
-                {userData ? getInitials(userData.firstName, userData.lastName) : '??'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Emergency Contact Reminder */}
-        {!userData?.emergencyContact && (
-          <TouchableOpacity 
-            style={styles.reminderCard}
-            onPress={() => navigation.navigate('Profile')}
-          >
-            <View style={styles.reminderIconBox}>
-              <AlertCircle size={24} color={colors.error} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.reminderTitle}>Emergency Contact Missing</Text>
-              <Text style={styles.reminderSubtitle}>Please update your profile for safety.</Text>
-            </View>
-            <ChevronRight size={20} color={colors.textLight} />
-          </TouchableOpacity>
-        )}
-
-        {/* Role-Based Admin Action */}
-        {(userData?.role === 'HR' || userData?.role === 'ADMIN') && (
-          <TouchableOpacity 
-            style={styles.adminBanner}
-            onPress={() => navigation.navigate('AdminDashboard')}
-          >
-            <View style={styles.adminIconBox}>
-              <Briefcase size={20} color={colors.white} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.adminTitle}>Admin Control Center</Text>
-              <Text style={styles.adminSubtitle}>Manage employees and registrations</Text>
-            </View>
-            <ChevronRight size={20} color={colors.textLight} />
-          </TouchableOpacity>
-        )}
-
-        {/* Platform Admin Action */}
-        {userData?.role === 'SUPER_ADMIN' && (
-          <TouchableOpacity 
-            style={[styles.adminBanner, { borderColor: colors.primary + '30' }]}
-            onPress={() => navigation.navigate('SuperAdminDashboard')}
-          >
-            <View style={[styles.adminIconBox, { backgroundColor: colors.primary }]}>
-              <BarChart3 size={20} color={colors.white} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.adminTitle}>Platform Administration</Text>
-              <Text style={styles.adminSubtitle}>Manage organizations and platform health</Text>
-            </View>
-            <ChevronRight size={20} color={colors.textLight} />
-          </TouchableOpacity>
-        )}
-
-        {/* Org Admin Action */}
-        {userData?.role === 'ORG_ADMIN' && (
-          <TouchableOpacity 
-            style={[styles.adminBanner, { borderColor: colors.primary + '30' }]}
-            onPress={() => navigation.navigate('AdminDashboard')}
-          >
-            <View style={[styles.adminIconBox, { backgroundColor: colors.primary }]}>
-              <Shield size={20} color={colors.white} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.adminTitle}>Admin Control Center</Text>
-              <Text style={styles.adminSubtitle}>Manage employees and company configuration</Text>
-            </View>
-            <ChevronRight size={20} color={colors.textLight} />
-          </TouchableOpacity>
-        )}
-
-        {/* Manager-Specific Team Approvals */}
-
-        {userData?.role === 'MANAGER' && (
-          <TouchableOpacity 
-            style={[styles.adminBanner, { borderColor: isDarkMode ? 'rgba(54, 179, 126, 0.2)' : '#ECFDF5' }]}
-            onPress={() => navigation.navigate('Leaves', { mode: 'manager' })}
-          >
-            <View style={[styles.adminIconBox, { backgroundColor: colors.success }]}>
-              <UserCheck size={20} color={colors.white} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.adminTitle}>Team Approvals</Text>
-              <Text style={styles.adminSubtitle}>Review pending leave requests</Text>
-            </View>
-            <ChevronRight size={20} color={colors.textLight} />
-          </TouchableOpacity>
-        )}
-
-
-        {/* Check-in Card */}
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Premium Header Background */}
+      <View style={styles.headerBackground}>
         <LinearGradient
-          colors={isCheckedIn ? colors.successGradient : colors.primaryGradient}
+          colors={['#1E1B4B', '#312E81', '#4338CA']}
+          style={styles.gradientHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.checkInCard}
         >
-          <View style={styles.checkInInfo}>
-            <View style={styles.iconCircle}>
-              <Clock size={24} color={colors.white} />
-            </View>
+          <SafeAreaView edges={['top']} style={styles.topNav}>
             <View>
-              <Text style={styles.checkInLabel}>
-                {isCheckedIn ? 'ACTIVE SESSION' : totalTodaySeconds > 0 ? 'SESSION PAUSED' : 'NOT CHECKED IN'}
-              </Text>
-              <Text style={styles.timerText}>
-                {isCheckedIn || totalTodaySeconds > 0 ? formatTime(seconds) : (config?.windowStart || '08:00 AM')}
-              </Text>
+              <Text style={styles.greetingText}>{getGreeting()},</Text>
+              <Text style={styles.userName}>{userData?.firstName || 'User'}</Text>
+            </View>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity style={styles.iconCircle}>
+                <Bell size={22} color="#FFF" />
+                <View style={styles.notifBadge} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.avatarCircle}
+                onPress={() => navigation.navigate('Profile')}
+              >
+                <Text style={styles.avatarText}>
+                  {(userData?.firstName?.[0] || 'U')}{(userData?.lastName?.[0] || '')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+
+          {/* Glass Attendance Card */}
+          <View style={styles.attendanceContainer}>
+            <View style={styles.glassCard}>
+              <View style={styles.cardHeader}>
+                <View style={styles.statusBox}>
+                  <Animated.View style={[
+                    styles.statusIndicator, 
+                    { backgroundColor: isCheckedIn ? '#10B981' : '#F59E0B' },
+                    { transform: [{ scale: pulseAnim }] }
+                  ]} />
+                  <Text style={styles.statusText}>
+                    {isCheckedIn ? (isOnBreak ? 'ON BREAK' : 'WORKING LIVE') : 'OFFLINE'}
+                  </Text>
+                </View>
+                <Text style={styles.dateText}>
+                  {new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </Text>
+              </View>
+
+              <View style={styles.cardBody}>
+                <View>
+                  <Text style={styles.timerLabel}>SESSION TIME</Text>
+                  <Text style={styles.timerText}>{formatTime(timer)}</Text>
+                </View>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, { backgroundColor: isCheckedIn ? '#FFFFFF' : '#4F46E5' }]}
+                  onPress={handleCheckIn}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.actionBtnText, { color: isCheckedIn ? '#4F46E5' : '#FFFFFF' }]}>
+                    {isCheckedIn ? 'Check-Out' : 'Check-In'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-          <TouchableOpacity 
-            style={[styles.checkInButton, isLoadingLocation && { opacity: 0.8 }]}
-            onPress={handleCheckIn}
-            disabled={isLoadingLocation}
-          >
-            {isLoadingLocation ? (
-              <ActivityIndicator color={isCheckedIn ? colors.success : colors.primary} size="small" />
-            ) : (
-              <Text style={[styles.checkInButtonText, { color: isCheckedIn ? colors.success : colors.primary }]}>
-                {isCheckedIn ? 'CHECK-OUT' : totalTodaySeconds > 0 ? 'RESUME' : 'CHECK-IN'}
-              </Text>
-            )}
-          </TouchableOpacity>
         </LinearGradient>
+      </View>
 
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <View style={{ height: 300 }} />
 
-        {/* Regularization Link */}
-        <TouchableOpacity 
-          style={styles.regularizeLink}
-          onPress={() => navigation.navigate('Regularize')}
-        >
-          <Text style={styles.regularizeText}>Forgot to check in? <Text style={styles.regularizeAction}>Regularize Now</Text></Text>
-        </TouchableOpacity>
-
-        {/* Summary Stats */}
-        <View style={styles.statsGrid}>
-          <TouchableOpacity 
-            style={styles.statCard}
-            onPress={() => navigation.navigate('Leaves')}
-          >
-            <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF' }]}>
-              <Calendar size={20} color={colors.primary} />
+        {/* Manager Console Section */}
+        {['MANAGER', 'HR', 'ORG_ADMIN'].includes(userData?.role) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>MANAGER CONSOLE</Text>
             </View>
-            <Text style={styles.statValue}>{leaveBalance}</Text>
-            <Text style={styles.statLabel}>Leave Balance</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.statCard}
-            onPress={() => navigation.navigate('Attendance')}
-          >
-            <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5' }]}>
-              <UserCheck size={20} color={colors.success} />
-            </View>
-            <Text style={styles.statValue}>{attendanceCount}</Text>
-            <Text style={styles.statLabel}>Attendance</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Upcoming Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Holidays</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Holidays')}>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.listCard}
-          onPress={() => navigation.navigate('Holidays')}
-        >
-          <View style={styles.listItem}>
-            <View style={styles.dateBox}>
-              <Text style={styles.dateDay}>15</Text>
-              <Text style={styles.dateMonth}>MAY</Text>
-            </View>
-            <View style={styles.listItemContent}>
-              <Text style={styles.holidayName}>Eid-ul-Fitr</Text>
-              <Text style={styles.holidayDay}>Friday</Text>
-            </View>
-            <ChevronRight size={18} color={colors.textLight} />
+            <TouchableOpacity 
+              style={styles.managerCard}
+              onPress={() => navigation.navigate('Leaves', { mode: 'manager' })}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['rgba(79, 70, 229, 0.1)', 'rgba(79, 70, 229, 0.02)']}
+                style={styles.managerIconBox}
+              >
+                <UserCheck size={24} color="#4F46E5" strokeWidth={2.5} />
+              </LinearGradient>
+              <View style={styles.managerContent}>
+                <Text style={styles.managerTitle}>Review Team Leaves</Text>
+                <Text style={styles.managerSubtitle}>Manage pending employee requests</Text>
+              </View>
+              <View style={styles.chevronBox}>
+                <ChevronRight size={20} color="#94A3B8" />
+              </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        )}
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
+          </View>
+          <View style={styles.quickGrid}>
+            <QuickAction icon={Calendar} label="Leaves" color="#4F46E5" onPress={() => navigation.navigate('Leaves')} />
+            <QuickAction icon={Briefcase} label="Directory" color="#10B981" onPress={() => navigation.navigate('Directory')} />
+            <QuickAction icon={Clock} label="History" color="#F59E0B" onPress={() => navigation.navigate('Activity')} />
+            <QuickAction icon={CreditCard} label="Billing" color="#8B5CF6" onPress={() => navigation.navigate('Subscription')} />
+          </View>
+        </View>
 
         {/* Recent Activity */}
-        <TouchableOpacity 
-          style={styles.sectionHeader}
-          onPress={() => navigation.navigate('Activity')}
-        >
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <Text style={styles.viewAll}>View All</Text>
-        </TouchableOpacity>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.activityCard}>
+            <ActivityItem 
+              icon={ArrowUpRight} 
+              title="Clocked In" 
+              time="09:15 AM" 
+              desc="Started session from Home Office"
+              color="#10B981"
+            />
+            <View style={styles.itemDivider} />
+            <ActivityItem 
+              icon={Zap} 
+              title="Punch In" 
+              time="Yesterday" 
+              desc="Successfully completed 8h 30m"
+              color="#4F46E5"
+            />
+          </View>
+        </View>
 
-        <TouchableOpacity 
-          style={styles.activityCard}
-          onPress={() => navigation.navigate('Activity')}
-        >
-          <View style={styles.activityItem}>
-            <View style={[styles.activityDot, { backgroundColor: colors.success }]} />
-            <Text style={styles.activityText}>Checked in at {config?.windowStart || '08:00 AM'} today</Text>
-          </View>
-          <View style={styles.activityDivider} />
-          <View style={styles.activityItem}>
-            <View style={[styles.activityDot, { backgroundColor: colors.primary }]} />
-            <Text style={styles.activityText}>Leave approved by Admin (12 May)</Text>
-          </View>
-        </TouchableOpacity>
+        <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
-const getStyles = (colors, isDarkMode) => StyleSheet.create({
+const QuickAction = ({ icon: Icon, label, color, onPress }) => (
+  <TouchableOpacity style={styles.quickItem} onPress={onPress}>
+    <View style={[styles.quickIconBox, { backgroundColor: color + '15' }]}>
+      <Icon size={24} color={color} strokeWidth={2.5} />
+    </View>
+    <Text style={styles.quickLabel}>{label}</Text>
+  </TouchableOpacity>
+);
+
+const ActivityItem = ({ icon: Icon, title, time, desc, color }) => (
+  <View style={styles.activityItem}>
+    <View style={[styles.activityIconBox, { backgroundColor: color + '10' }]}>
+      <Icon size={18} color={color} />
+    </View>
+    <View style={styles.activityContent}>
+      <View style={styles.activityTop}>
+        <Text style={styles.activityTitle}>{title}</Text>
+        <Text style={styles.activityTime}>{time}</Text>
+      </View>
+      <Text style={styles.activityDesc}>{desc}</Text>
+    </View>
+  </View>
+);
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    backgroundColor: '#F8FAFC',
   },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 40,
+  headerBackground: {
+    height: 300,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
-  header: {
+  gradientHeader: {
+    flex: 1,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    paddingHorizontal: 24,
+  },
+  topNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    paddingTop: 10,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  notificationBtn: {
-    marginRight: 16,
-    padding: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    ...colors.shadow,
-  },
-  greeting: {
+  greetingText: {
     fontSize: 14,
-    color: colors.textLight,
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: '600',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.text,
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
-  profileImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...colors.shadow,
-  },
-  profileInitial: {
-    color: colors.white,
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  adminBanner: {
-    backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 24,
+  headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-    ...colors.shadow,
-    borderWidth: 1,
-    borderColor: isDarkMode ? '#334155' : '#E5E7EB',
-  },
-  adminIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  adminTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  adminSubtitle: {
-    fontSize: 12,
-    color: colors.textLight,
-    fontWeight: '600',
-  },
-  reminderCard: {
-    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2',
-    padding: 16,
-    borderRadius: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2',
-  },
-  reminderIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  reminderTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.error,
-  },
-  reminderSubtitle: {
-    fontSize: 12,
-    color: colors.textLight,
-    fontWeight: '600',
-  },
-  checkInCard: {
-    padding: 24,
-    borderRadius: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-    ...colors.shadow,
-  },
-  checkInInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+    gap: 12,
   },
   iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  checkInLabel: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    marginBottom: 2,
-  },
-  timerText: {
-    color: colors.white,
-    fontSize: 26,
-    fontWeight: '900',
-  },
-  checkInButton: {
-    backgroundColor: colors.white,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 16,
-    ...colors.shadow,
-  },
-  checkInButtonText: {
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  regularizeLink: {
-    marginBottom: 32,
-    alignItems: 'center',
-    backgroundColor: isDarkMode ? '#1E293B' : '#FFFBEB',
-    padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: isDarkMode ? '#334155' : '#FEF3C7',
-  },
-  regularizeText: {
-    fontSize: 13,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  regularizeAction: {
-    color: colors.primary,
-    fontWeight: '800',
-    textDecorationLine: 'underline',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 32,
-  },
-  statCard: {
-    backgroundColor: colors.surface,
-    width: (width - 64) / 2,
-    padding: 20,
-    borderRadius: 22,
-    ...colors.shadow,
-  },
-  iconBox: {
     width: 44,
     height: 44,
     borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#312E81',
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  avatarText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    paddingHorizontal: 10,
+  },
+  statItem: {
+    alignItems: 'center',
   },
   statValue: {
     fontSize: 22,
     fontWeight: '900',
-    color: colors.text,
-    marginBottom: 4,
+    color: '#FFF',
   },
   statLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  attendanceContainer: {
+    marginTop: 30,
+  },
+  glassCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 32,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  statusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    gap: 8,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: 0.5,
+  },
+  dateText: {
     fontSize: 12,
-    color: colors.textLight,
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '700',
+  },
+  cardBody: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  timerLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  timerText: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: -1,
+  },
+  actionBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  actionBtnText: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  section: {
+    paddingHorizontal: 24,
+    marginTop: 32,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -629,86 +534,133 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 12,
     fontWeight: '900',
-    color: colors.text,
+    color: '#94A3B8',
+    letterSpacing: 1.5,
   },
-  viewAll: {
-    fontSize: 14,
-    color: colors.primary,
+  seeAll: {
+    fontSize: 13,
+    color: '#4F46E5',
     fontWeight: '800',
   },
-  listCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 32,
-    ...colors.shadow,
-  },
-  listItem: {
+  quickGrid: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickItem: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  dateBox: {
-    backgroundColor: isDarkMode ? '#1E3A8A' : '#F0F7FF',
+  quickLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
+  },
+  managerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  managerIconBox: {
     width: 56,
     height: 56,
-    borderRadius: 14,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
-  dateDay: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: colors.primary,
-  },
-  dateMonth: {
-    fontSize: 10,
-    color: colors.primary,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  listItemContent: {
+  managerContent: {
     flex: 1,
   },
-  holidayName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
+  managerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1E293B',
     marginBottom: 2,
   },
-  holidayDay: {
-    fontSize: 12,
-    color: colors.textLight,
+  managerSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
     fontWeight: '600',
   },
+  chevronBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   activityCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
     padding: 20,
-    ...colors.shadow,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   activityItem: {
     flexDirection: 'row',
+    gap: 16,
+  },
+  activityIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
   },
-  activityDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 14,
+  activityContent: {
+    flex: 1,
   },
-  activityText: {
+  activityTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  activityTitle: {
     fontSize: 15,
-    color: colors.text,
-    fontWeight: '500',
+    fontWeight: '800',
+    color: '#1E293B',
   },
-  activityDivider: {
+  activityTime: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '700',
+  },
+  activityDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  itemDivider: {
     height: 1,
-    backgroundColor: isDarkMode ? '#334155' : '#F3F4F6',
-    marginVertical: 4,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 16,
+    marginLeft: 58,
   },
 });
 

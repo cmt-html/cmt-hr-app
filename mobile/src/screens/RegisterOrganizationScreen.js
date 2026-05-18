@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
 import api from '../services/api.service';
 import { Mail, Lock, Building, User, Phone, MapPin, ChevronRight, ChevronLeft } from 'lucide-react-native';
+import CloudMojoLogo from '../components/CloudMojoLogo';
 
 const RegisterOrganizationScreen = ({ navigation }) => {
   const { colors } = useTheme();
@@ -48,7 +49,8 @@ const RegisterOrganizationScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={colors.primaryGradient}
+        colors={colors.authBackgroundGradient}
+        locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -68,6 +70,10 @@ const RegisterOrganizationScreen = ({ navigation }) => {
           style={{ flex: 1 }}
         >
           <ScrollView contentContainerStyle={styles.scrollContent}>
+            <View style={styles.heroLogo}>
+              <CloudMojoLogo width={200} wordmarkColor={colors.authWordmark} />
+            </View>
+            <Text style={styles.heroSubtitle}>Create your company workspace</Text>
             <Text style={styles.sectionTitle}>Organization Details</Text>
             
             <View style={styles.inputContainer}>
@@ -181,13 +187,17 @@ const RegisterOrganizationScreen = ({ navigation }) => {
 const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#020617',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingTop: Platform.OS === 'ios' ? 10 : (StatusBar.currentHeight || 0) + 10,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   backButton: {
     padding: 8,
@@ -198,8 +208,20 @@ const getStyles = (colors) => StyleSheet.create({
     color: '#FFFFFF',
   },
   scrollContent: {
-    paddingHorizontal: 30,
-    paddingTop: 20,
+    paddingHorizontal: 28,
+    paddingTop: 12,
+    paddingBottom: 48,
+  },
+  heroLogo: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    textAlign: 'center',
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 28,
   },
   sectionTitle: {
     fontSize: 14,
@@ -212,13 +234,13 @@ const getStyles = (colors) => StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 18,
-    marginBottom: 16,
-    paddingHorizontal: 20,
-    height: 60,
+    backgroundColor: colors.authInputBg,
+    borderRadius: 16,
+    marginBottom: 14,
+    paddingHorizontal: 18,
+    height: 58,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: colors.authGlassBorder,
   },
   inputIcon: {
     marginRight: 15,
@@ -234,12 +256,12 @@ const getStyles = (colors) => StyleSheet.create({
   },
   registerBtn: {
     backgroundColor: '#FFFFFF',
-    height: 64,
-    borderRadius: 18,
+    height: 58,
+    borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 20,
     ...colors.shadow,
   },
   registerBtnText: {

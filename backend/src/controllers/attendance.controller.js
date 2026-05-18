@@ -78,9 +78,9 @@ exports.getAttendanceHistory = async (req, res) => {
   try {
     const { userId } = req.params;
     
-    // --- PRISMA/POSTGRES MODE ---
+    let history = [];
     try {
-      const history = await prisma.attendance.findMany({
+      history = await prisma.attendance.findMany({
         where: { userId },
         orderBy: { checkIn: 'desc' },
         take: 30
@@ -88,10 +88,10 @@ exports.getAttendanceHistory = async (req, res) => {
       return res.json(history);
     } catch (dbError) {
        console.warn('⚠️ Attendance Postgres Error, using Mock:', dbError.message);
+       history = mockDb.find('attendances', { userId }) || [];
     }
 
-    // --- MOCK MODE FALLBACK ---
-    const history = mockDb.find('attendances', { userId });
+    if (!Array.isArray(history)) history = [];
     res.json(history.reverse().slice(0, 30));
   } catch (error) {
     res.status(500).json({ message: 'History fetch failed', error: error.message });
@@ -101,21 +101,59 @@ exports.getAttendanceHistory = async (req, res) => {
 exports.getMonthlyReportData = async (req, res) => {
   try {
     const organizationId = req.organizationId;
-    
+    const month = parseInt(req.query.month, 10);
+    const year = parseInt(req.query.year, 10);
+    const hasMonthFilter = Number.isFinite(month) && month >= 1 && month <= 12 && Number.isFinite(year);
+
+    const inSelectedMonth = (d) => {
+      if (!hasMonthFilter) return true;
+      const dt = new Date(d);
+      return dt.getMonth() + 1 === month && dt.getFullYear() === year;
+    };
+
+    const mapForClient = (rows) =>
+      rows
+        .filter((r) => inSelectedMonth(r.checkIn || r.date))
+        .map((r) => ({
+          ...r,
+          detailedStatus: r.status || 'PRESENT',
+          date: r.date || r.checkIn,
+        }));
+
     // --- PRISMA/POSTGRES MODE ---
     try {
       const data = await prisma.attendance.findMany({
         where: { organizationId },
-        include: { user: true }
+        include: { user: true },
+        orderBy: { checkIn: 'desc' },
       });
-      return res.json(data);
+      return res.json(mapForClient(data));
     } catch (dbError) {
-       console.warn('⚠️ Report Postgres Error, using Mock:', dbError.message);
+      console.warn('⚠️ Report Postgres Error, using Mock:', dbError.message);
     }
 
     // --- MOCK MODE FALLBACK ---
-    const data = mockDb.find('attendances', { organizationId });
-    res.json(data);
+    let rows = mockDb.find('attendances', { organizationId }) || [];
+    if (!rows.length) {
+      const all = mockDb.find('attendances') || [];
+      rows = all.filter((a) => {
+        const u = mockDb.findOne('users', { id: a.userId });
+        return u && u.organizationId === organizationId;
+      });
+    }
+
+    const enriched = mapForClient(rows).map((record) => {
+      const user =
+        mockDb.findOne('users', { id: record.userId }) || {
+          firstName: 'Unknown',
+          lastName: 'User',
+          department: '',
+          employeeId: '',
+        };
+      return { ...record, user };
+    });
+
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ message: 'Report data failed', error: error.message });
   }

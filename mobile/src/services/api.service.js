@@ -10,6 +10,8 @@ const api = axios.create({
   },
 });
 
+import * as NavigationService from './NavigationService';
+
 // Request interceptor to add the auth token
 api.interceptors.request.use(
   async (config) => {
@@ -20,6 +22,18 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Response interceptor for global error handling
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 402) {
+      // Subscription Expired / Payment Required
+      NavigationService.navigate('Subscription');
+    }
+    return Promise.reject(error);
+  }
 );
 
 export const authService = {
@@ -105,6 +119,17 @@ export const leaveService = {
     const response = await api.put(`/leave/approve/${leaveId}`, { status });
     return response.data;
   },
+};
+
+export const saasService = {
+  getPlans: async () => {
+    const response = await api.get('/saas/plans');
+    return response.data;
+  },
+  createCheckout: async (planId) => {
+    const response = await api.post('/saas/checkout', { planId });
+    return response.data;
+  }
 };
 
 export default api;

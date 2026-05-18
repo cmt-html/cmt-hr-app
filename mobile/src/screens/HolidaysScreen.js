@@ -1,11 +1,24 @@
 import React from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, StatusBar, Platform } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  FlatList, 
+  TouchableOpacity, 
+  StatusBar, 
+  Platform,
+  Dimensions
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { ChevronLeft, Calendar } from 'lucide-react-native';
+import { ChevronLeft, Calendar as CalendarIcon, PartyPopper } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 const HolidaysScreen = ({ navigation }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
 
   const holidays = [
     { id: '1', name: 'New Year Day', date: '01 Jan', day: 'Wednesday' },
@@ -29,69 +42,159 @@ const HolidaysScreen = ({ navigation }) => {
         <Text style={styles.holidayName}>{item.name}</Text>
         <Text style={styles.holidayDay}>{item.day}</Text>
       </View>
+      <View style={styles.iconBox}>
+        <PartyPopper size={18} color={colors.primary} strokeWidth={1.5} />
+      </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ChevronLeft size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Holidays 2026</Text>
-        <View style={{ width: 24 }} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Immersive Header */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={colors.primaryGradient}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <SafeAreaView edges={['top']} style={styles.headerTop}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <ChevronLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Holiday Calendar</Text>
+            <View style={{ width: 44 }} />
+          </SafeAreaView>
+          
+          <View style={styles.heroSection}>
+            <View style={styles.badge}>
+              <CalendarIcon size={14} color="#FFFFFF" />
+              <Text style={styles.badgeText}>Academic Year 2026</Text>
+            </View>
+            <Text style={styles.heroTitle}>Annual Holidays</Text>
+            <Text style={styles.heroSubtitle}>Plan your vacations and time-off</Text>
+          </View>
+        </LinearGradient>
       </View>
 
-      <FlatList
-        data={holidays}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-    </SafeAreaView>
+      <View style={styles.listWrapper}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>UPCOMING EVENTS</Text>
+        </View>
+
+        <FlatList
+          data={holidays}
+          renderItem={renderItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    </View>
   );
 };
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  header: {
-    padding: 24,
-    backgroundColor: colors.surface,
+  headerWrapper: {
+    zIndex: 10,
+  },
+  headerGradient: {
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...colors.shadow,
-    zIndex: 10,
+    paddingTop: 10,
+    marginBottom: 24,
   },
-  backButton: {
-    padding: 5,
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  heroSection: {
+    alignItems: 'center',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    marginBottom: 12,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
     fontWeight: '900',
-    color: colors.text,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  listWrapper: {
+    flex: 1,
+    padding: 24,
+  },
+  sectionHeader: {
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: colors.textLight,
+    letterSpacing: 1.5,
   },
   listContent: {
-    padding: 24,
+    paddingBottom: 40,
   },
   holidayCard: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 20,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    padding: 12,
+    borderRadius: 24,
     marginBottom: 16,
     alignItems: 'center',
-    ...colors.shadow,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
   },
   dateBox: {
-    width: 60,
-    height: 60,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    width: 56,
+    height: 56,
+    backgroundColor: 'rgba(11, 74, 236, 0.05)',
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -112,16 +215,25 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
   },
   holidayName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: colors.text,
     marginBottom: 2,
   },
   holidayDay: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textLight,
     fontWeight: '600',
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
 export default HolidaysScreen;
+

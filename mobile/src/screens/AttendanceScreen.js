@@ -1,12 +1,32 @@
 import React, { useState, useMemo } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Platform, Dimensions } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  ScrollView, 
+  TouchableOpacity, 
+  StatusBar, 
+  Platform, 
+  Dimensions, 
+  ActivityIndicator 
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { ChevronLeft, ChevronRight, Clock, MapPin, AlertCircle, CheckCircle2, XCircle } from 'lucide-react-native';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Clock, 
+  MapPin, 
+  AlertCircle, 
+  CheckCircle2, 
+  XCircle,
+  Calendar as CalendarIcon,
+  Filter
+} from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { attendanceService } from '../services/api.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivityIndicator } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -16,7 +36,6 @@ const LocationDisplay = ({ location, colors }) => {
 
   React.useEffect(() => {
     const resolveAddress = async () => {
-      // Check if location is in "lat, long" format
       const coordsRegex = /^-?\d+\.\d+,\s*-?\d+\.\d+$/;
       if (coordsRegex.test(location)) {
         setLoading(true);
@@ -49,7 +68,7 @@ const LocationDisplay = ({ location, colors }) => {
       {loading ? (
         <ActivityIndicator size="small" color={colors.primary} style={{ alignSelf: 'flex-start' }} />
       ) : (
-        <Text style={{ fontSize: 15, fontWeight: '900', color: colors.text }}>{address}</Text>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>{address}</Text>
       )}
     </View>
   );
@@ -61,56 +80,52 @@ const AttendanceScreen = ({ navigation, route }) => {
   const targetUserId = route.params?.userId;
   const targetUserName = route.params?.userName;
 
-  // State
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceData, setAttendanceData] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // Fetch data
   React.useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        setLoading(true);
-        let userIdToFetch;
-        
-        if (targetUserId) {
-          userIdToFetch = targetUserId;
-        } else {
-          const savedUser = await AsyncStorage.getItem('userData');
-          if (!savedUser) return;
-          const user = JSON.parse(savedUser);
-          userIdToFetch = user.id;
-        }
-
-        const history = await attendanceService.getHistory(userIdToFetch);
-        
-        // Map history to attendanceData format
-        const mappedData = {};
-        history.forEach(record => {
-          const recDate = new Date(record.date);
-          const dateKey = recDate.toISOString().split('T')[0];
-          mappedData[dateKey] = {
-            status: record.status,
-            month: recDate.getMonth(),
-            checkIn: record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-            checkOut: record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-            location: record.location || 'Office'
-          };
-        });
-        
-        setAttendanceData(mappedData);
-      } catch (error) {
-        console.error('Failed to fetch attendance:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHistory();
   }, [targetUserId]);
 
-  // Calendar Logic
+  const fetchHistory = async () => {
+    try {
+      setLoading(true);
+      let userIdToFetch;
+      
+      if (targetUserId) {
+        userIdToFetch = targetUserId;
+      } else {
+        const savedUser = await AsyncStorage.getItem('userData');
+        if (!savedUser) return;
+        const user = JSON.parse(savedUser);
+        userIdToFetch = user.id;
+      }
+
+      const history = await attendanceService.getHistory(userIdToFetch);
+      
+      const mappedData = {};
+      history.forEach(record => {
+        const recDate = new Date(record.date);
+        const dateKey = recDate.toISOString().split('T')[0];
+        mappedData[dateKey] = {
+          status: record.status,
+          month: recDate.getMonth(),
+          checkIn: record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+          checkOut: record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+          location: record.location || 'Office'
+        };
+      });
+      
+      setAttendanceData(mappedData);
+    } catch (error) {
+      console.error('Failed to fetch attendance:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const daysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (month, year) => new Date(year, month, 1).getDay();
 
@@ -121,11 +136,9 @@ const AttendanceScreen = ({ navigation, route }) => {
     const firstDay = firstDayOfMonth(month, year);
     
     const days = [];
-    // Fill leading empty days
     for (let i = 0; i < firstDay; i++) {
       days.push({ day: null, dateStr: null });
     }
-    // Fill actual days
     for (let i = 1; i <= totalDays; i++) {
       const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
       days.push({ day: i, dateStr });
@@ -137,204 +150,211 @@ const AttendanceScreen = ({ navigation, route }) => {
   const year = currentDate.getFullYear();
 
   const changeMonth = (offset) => {
-    const newDate = new Date(currentDate.setMonth(currentDate.getMonth() + offset));
-    setCurrentDate(new Date(newDate));
+    setCurrentDate((prev) => {
+      const next = new Date(prev);
+      next.setMonth(next.getMonth() + offset);
+      return next;
+    });
   };
 
   const selectedData = attendanceData[selectedDate] || { status: 'NO_DATA', checkIn: '-', checkOut: '-', location: '-' };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-          <ChevronLeft size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{targetUserName ? `${targetUserName}'s History` : 'Attendance History'}</Text>
-        <View style={{ width: 44 }} />
+      {/* Immersive Header */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={colors.primaryGradient}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <SafeAreaView edges={['top']} style={styles.headerTop}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <ChevronLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{targetUserName ? 'Team Record' : 'My Records'}</Text>
+            <TouchableOpacity style={styles.headerActionBtn}>
+              <Filter size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </SafeAreaView>
+          
+          <View style={styles.heroSection}>
+            <Text style={styles.heroUser}>{targetUserName || 'Monthly Summary'}</Text>
+            <Text style={styles.heroSubtitle}>{monthName} {year} Overview</Text>
+          </View>
+        </LinearGradient>
+        
+        {/* Floating Summary Stats */}
+        <View style={styles.summaryFloating}>
+          <View style={styles.summaryItem}>
+            <View style={[styles.statDot, { backgroundColor: colors.success }]} />
+            <Text style={styles.statVal}>
+              {Object.values(attendanceData).filter(r => r.status === 'PRESENT' && r.month === currentDate.getMonth()).length || 0}
+            </Text>
+            <Text style={styles.statLabel}>Present</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <View style={[styles.statDot, { backgroundColor: colors.warning }]} />
+            <Text style={styles.statVal}>
+              {Object.values(attendanceData).filter(r => r.status === 'LATE' && r.month === currentDate.getMonth()).length || 0}
+            </Text>
+            <Text style={styles.statLabel}>Late</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <View style={[styles.statDot, { backgroundColor: colors.error }]} />
+            <Text style={styles.statVal}>
+              {Object.values(attendanceData).filter(r => r.status === 'ABSENT' && r.month === currentDate.getMonth()).length || 0}
+            </Text>
+            <Text style={styles.statLabel}>Absent</Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {loading ? (
-          <View style={{ height: 300, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={{ marginTop: 10, color: colors.textLight }}>Loading records...</Text>
+            <Text style={styles.loadingText}>Synchronizing records...</Text>
           </View>
         ) : (
           <>
-            {/* Monthly Summary Stats */}
-            <View style={styles.summaryGrid}>
-              <LinearGradient 
-                colors={isDarkMode ? ['#059669', '#10B981'] : ['#ECFDF5', '#D1FAE5']} 
-                style={styles.summaryBox}
-              >
-                <Text style={[styles.summaryValue, { color: isDarkMode ? '#ECFDF5' : '#047857' }]}>
-                  {Object.values(attendanceData).filter(r => r.status === 'PRESENT' && r.month === currentDate.getMonth()).length || 0}
-                </Text>
-                <Text style={[styles.summaryLabel, { color: isDarkMode ? '#D1FAE5' : '#065F46' }]}>Present</Text>
-              </LinearGradient>
-
-              <LinearGradient 
-                colors={isDarkMode ? ['#D97706', '#F59E0B'] : ['#FFFBEB', '#FEF3C7']} 
-                style={styles.summaryBox}
-              >
-                <Text style={[styles.summaryValue, { color: isDarkMode ? '#FFFBEB' : '#B45309' }]}>
-                  {Object.values(attendanceData).filter(r => r.status === 'LATE' && r.month === currentDate.getMonth()).length || 0}
-                </Text>
-                <Text style={[styles.summaryLabel, { color: isDarkMode ? '#FEF3C7' : '#92400E' }]}>Late</Text>
-              </LinearGradient>
-
-              <LinearGradient 
-                colors={isDarkMode ? ['#DC2626', '#EF4444'] : ['#FEF2F2', '#FEE2E2']} 
-                style={styles.summaryBox}
-              >
-                <Text style={[styles.summaryValue, { color: isDarkMode ? '#FEF2F2' : '#B91C1C' }]}>
-                  {Object.values(attendanceData).filter(r => r.status === 'ABSENT' && r.month === currentDate.getMonth()).length || 0}
-                </Text>
-                <Text style={[styles.summaryLabel, { color: isDarkMode ? '#FEE2E2' : '#991B1B' }]}>Absent</Text>
-              </LinearGradient>
-            </View>
-            {/* Calendar Section */}
+            {/* Calendar Card */}
             <View style={styles.calendarCard}>
-          <View style={styles.calendarHeader}>
-            <Text style={styles.monthYearText}>{monthName} {year}</Text>
-            <View style={styles.monthNav}>
-              <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.navBtn}>
-                <ChevronLeft size={20} color={colors.text} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => changeMonth(1)} style={styles.navBtn}>
-                <ChevronRight size={20} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.weekDaysRow}>
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <Text key={i} style={styles.weekDayText}>{d}</Text>
-            ))}
-          </View>
-
-          <View style={styles.daysGrid}>
-            {calendarDays.map((item, index) => {
-              const isSelected = item.dateStr === selectedDate;
-              const status = attendanceData[item.dateStr]?.status;
-              
-              return (
-                <TouchableOpacity 
-                  key={index}
-                  style={[
-                    styles.dayItem,
-                    isSelected && styles.selectedDayItem
-                  ]}
-                  onPress={() => item.dateStr && setSelectedDate(item.dateStr)}
-                  disabled={!item.day}
-                >
-                  {item.day && (
-                    <>
-                      <Text style={[
-                        styles.dayText,
-                        isSelected && { color: colors.white }
-                      ]}>
-                        {item.day}
-                      </Text>
-                      {status && (
-                        <View style={[
-                          styles.statusDot,
-                          { backgroundColor: status === 'PRESENT' ? colors.success : status === 'LATE' ? colors.warning : colors.error }
-                        ]} />
-                      )}
-                    </>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Legend */}
-        <View style={styles.legendRow}>
-          <View style={styles.legendItem}>
-            <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
-            <Text style={styles.legendText}>Present</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.statusDot, { backgroundColor: colors.warning }]} />
-            <Text style={styles.legendText}>Late</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.statusDot, { backgroundColor: colors.error }]} />
-            <Text style={styles.legendText}>Absent</Text>
-          </View>
-        </View>
-
-        {/* Selected Date Details */}
-        <View style={styles.detailsSection}>
-          <View style={styles.detailsHeader}>
-            <Text style={styles.detailsTitle}>Day Details</Text>
-            <Text style={styles.selectedDateLabel}>{new Date(selectedDate).toDateString()}</Text>
-          </View>
-
-          {selectedData.status === 'NO_DATA' ? (
-            <View style={styles.noDataCard}>
-              <AlertCircle size={24} color={colors.textLight} />
-              <Text style={styles.noDataText}>No records found for this date.</Text>
-              <TouchableOpacity 
-                style={styles.regularizeBtn}
-                onPress={() => navigation.navigate('Regularize', { prefillDate: selectedDate })}
-              >
-                <Text style={styles.regularizeBtnText}>REGULARIZE NOW</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.dataCard}>
-              <View style={styles.statusRow}>
-                <View style={[styles.badge, { backgroundColor: selectedData.status === 'PRESENT' ? colors.success + '20' : colors.warning + '20' }]}>
-                  {selectedData.status === 'PRESENT' ? <CheckCircle2 size={14} color={colors.success} /> : <XCircle size={14} color={colors.warning} />}
-                  <Text style={[styles.badgeText, { color: selectedData.status === 'PRESENT' ? colors.success : colors.warning }]}>
-                    {selectedData.status}
-                  </Text>
+              <View style={styles.calendarHeader}>
+                <View style={styles.monthLabel}>
+                  <CalendarIcon size={18} color={colors.primary} />
+                  <Text style={styles.monthLabelText}>{monthName} {year}</Text>
                 </View>
-                {selectedData.status !== 'PRESENT' && (
-                  <TouchableOpacity onPress={() => navigation.navigate('Regularize', { prefillDate: selectedDate })}>
-                    <Text style={styles.inlineRegularize}>Regularize?</Text>
+                <View style={styles.monthNav}>
+                  <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.navBtn}>
+                    <ChevronLeft size={20} color={colors.text} />
                   </TouchableOpacity>
-                )}
-              </View>
-
-              <View style={styles.infoGrid}>
-                <View style={styles.infoItem}>
-                  <Clock size={18} color={colors.primary} />
-                  <View style={styles.infoTexts}>
-                    <Text style={styles.infoLabel}>CHECK-IN</Text>
-                    <Text style={styles.infoValue}>{selectedData.checkIn}</Text>
-                  </View>
-                </View>
-                <View style={styles.infoItem}>
-                  <Clock size={18} color={colors.primary} />
-                  <View style={styles.infoTexts}>
-                    <Text style={styles.infoLabel}>CHECK-OUT</Text>
-                    <Text style={styles.infoValue}>{selectedData.checkOut}</Text>
-                  </View>
+                  <TouchableOpacity onPress={() => changeMonth(1)} style={styles.navBtn}>
+                    <ChevronRight size={20} color={colors.text} />
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              <View style={styles.locationContainer}>
-                <MapPin size={18} color={colors.primary} />
-                <View style={styles.infoTexts}>
-                  <Text style={styles.infoLabel}>LOCATION</Text>
-                  <LocationDisplay location={selectedData.location} colors={colors} />
-                </View>
+              <View style={styles.weekDaysRow}>
+                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
+                  <Text key={i} style={styles.weekDayText}>{d}</Text>
+                ))}
+              </View>
+
+              <View style={styles.daysGrid}>
+                {calendarDays.map((item, index) => {
+                  const isSelected = item.dateStr === selectedDate;
+                  const status = attendanceData[item.dateStr]?.status;
+                  
+                  return (
+                    <TouchableOpacity 
+                      key={index}
+                      style={[
+                        styles.dayItem,
+                        isSelected && styles.selectedDayItem
+                      ]}
+                      onPress={() => item.dateStr && setSelectedDate(item.dateStr)}
+                      disabled={!item.day}
+                    >
+                      {item.day && (
+                        <>
+                          <Text style={[
+                            styles.dayText,
+                            isSelected && { color: '#FFFFFF' }
+                          ]}>
+                            {item.day}
+                          </Text>
+                          {status && (
+                            <View style={[
+                              styles.statusIndicator,
+                              { backgroundColor: status === 'PRESENT' ? colors.success : status === 'LATE' ? colors.warning : colors.error },
+                              isSelected && { borderColor: '#FFFFFF', borderWidth: 1 }
+                            ]} />
+                          )}
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
-          )}
-        </View>
 
+            {/* Selected Date Details */}
+            <View style={styles.detailsHeader}>
+              <Text style={styles.detailsTitle}>Day Activity</Text>
+              <View style={styles.dateBadge}>
+                <Text style={styles.dateBadgeText}>{new Date(selectedDate).toDateString()}</Text>
+              </View>
+            </View>
+
+            {selectedData.status === 'NO_DATA' ? (
+              <View style={styles.noDataCard}>
+                <AlertCircle size={32} color={colors.textLight} strokeWidth={1.5} />
+                <Text style={styles.noDataText}>No records found for this date.</Text>
+                <TouchableOpacity 
+                  style={styles.regularizeBtn}
+                  onPress={() => navigation.navigate('Regularize', { prefillDate: selectedDate })}
+                >
+                  <Text style={styles.regularizeBtnText}>Apply Regularization</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.dataCard}>
+                <View style={styles.statusRow}>
+                  <View style={[styles.badge, { backgroundColor: selectedData.status === 'PRESENT' ? '#ECFDF5' : '#FFFBEB' }]}>
+                    <View style={[styles.badgeDot, { backgroundColor: selectedData.status === 'PRESENT' ? colors.success : colors.warning }]} />
+                    <Text style={[styles.badgeText, { color: selectedData.status === 'PRESENT' ? '#065F46' : '#92400E' }]}>
+                      {selectedData.status}
+                    </Text>
+                  </View>
+                  {selectedData.status !== 'PRESENT' && (
+                    <TouchableOpacity onPress={() => navigation.navigate('Regularize', { prefillDate: selectedDate })}>
+                      <Text style={styles.inlineAction}>Update Details?</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.infoRow}>
+                  <View style={styles.infoCol}>
+                    <View style={styles.infoIconBox}>
+                      <Clock size={16} color={colors.primary} />
+                    </View>
+                    <View>
+                      <Text style={styles.infoLabel}>IN TIME</Text>
+                      <Text style={styles.infoValue}>{selectedData.checkIn}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.infoCol}>
+                    <View style={styles.infoIconBox}>
+                      <Clock size={16} color={colors.primary} />
+                    </View>
+                    <View>
+                      <Text style={styles.infoLabel}>OUT TIME</Text>
+                      <Text style={styles.infoValue}>{selectedData.checkOut}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.locationBox}>
+                  <View style={styles.infoIconBox}>
+                    <MapPin size={16} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.infoLabel}>RECORDED LOCATION</Text>
+                    <LocationDisplay location={selectedData.location} colors={colors} />
+                  </View>
+                </View>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -343,94 +363,146 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
+  headerWrapper: {
+    marginBottom: 40,
+    zIndex: 10,
+  },
+  headerGradient: {
+    paddingBottom: 70,
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    ...colors.shadow,
-    zIndex: 100,
+    paddingTop: 10,
+    marginBottom: 24,
   },
-  iconBtn: {
+  backBtn: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: isDarkMode ? '#1E293B' : '#F8FAFC',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  headerActionBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroSection: {
+    alignItems: 'center',
+  },
+  heroUser: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  summaryFloating: {
+    position: 'absolute',
+    bottom: -30,
+    left: 20,
+    right: 20,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    borderRadius: 24,
+    flexDirection: 'row',
+    padding: 16,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
+  },
+  summaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryDivider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: '#F1F5F9',
+    alignSelf: 'center',
+  },
+  statDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 6,
+  },
+  statVal: {
+    fontSize: 18,
     fontWeight: '900',
     color: colors.text,
   },
-  scrollContent: {
-    padding: 24,
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 12,
-  },
-  summaryBox: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  summaryValue: {
-    fontSize: 22,
-    fontWeight: '900',
-    marginBottom: 2,
-  },
-  summaryLabel: {
+  statLabel: {
     fontSize: 10,
-    fontWeight: '800',
+    color: colors.textLight,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingTop: 10,
+    paddingBottom: 40,
+  },
+  loadingBox: {
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textLight,
   },
   calendarCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 30,
-    padding: 24,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    borderRadius: 32,
+    padding: 20,
     ...colors.shadow,
-    marginBottom: 20,
+    marginBottom: 32,
   },
   calendarHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  monthYearText: {
-    fontSize: 20,
-    fontWeight: '900',
+  monthLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  monthLabelText: {
+    fontSize: 18,
+    fontWeight: '800',
     color: colors.text,
   },
   monthNav: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   navBtn: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: isDarkMode ? '#334155' : '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
@@ -438,12 +510,13 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
   weekDaysRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   weekDayText: {
-    width: (width - 96) / 7,
+    width: (width - 88) / 7,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '800',
     color: colors.textLight,
   },
@@ -453,168 +526,157 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     justifyContent: 'space-between',
   },
   dayItem: {
-    width: (width - 96) / 7,
-    height: 45,
+    width: (width - 88) / 7,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-    borderRadius: 12,
+    marginBottom: 4,
+    borderRadius: 14,
+    position: 'relative',
   },
   selectedDayItem: {
     backgroundColor: colors.primary,
     ...colors.shadow,
   },
   dayText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.text,
   },
-  statusDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    marginTop: 4,
-  },
-  legendRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginBottom: 32,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textLight,
-  },
-  detailsSection: {
-    marginBottom: 20,
+  statusIndicator: {
+    position: 'absolute',
+    bottom: 6,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   detailsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 20,
+    alignItems: 'center',
+    marginBottom: 16,
     paddingHorizontal: 4,
   },
   detailsTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     color: colors.text,
   },
-  selectedDateLabel: {
-    fontSize: 14,
+  dateBadge: {
+    backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  dateBadgeText: {
+    fontSize: 12,
     fontWeight: '700',
     color: colors.primary,
-    marginBottom: 2,
   },
   noDataCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 28,
-    padding: 40,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    borderRadius: 32,
+    padding: 32,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
     ...colors.shadow,
   },
   noDataText: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.textLight,
     fontWeight: '600',
-    marginVertical: 20,
+    marginVertical: 16,
     textAlign: 'center',
-    lineHeight: 22,
+  },
+  regularizeBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+    ...colors.shadow,
+  },
+  regularizeBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
   },
   dataCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 28,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    borderRadius: 32,
     padding: 24,
     ...colors.shadow,
-    borderWidth: 1,
-    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
   },
   statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginBottom: 20,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  badgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 1,
   },
-  inlineRegularize: {
-    fontSize: 14,
+  inlineAction: {
+    fontSize: 13,
     fontWeight: '800',
     color: colors.primary,
   },
-  infoGrid: {
+  infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
+    gap: 12,
+    marginBottom: 12,
   },
-  infoItem: {
+  infoCol: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#F8FAFC',
+    backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
     padding: 12,
     borderRadius: 16,
   },
-  infoTexts: {
-    gap: 2,
+  infoIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(11, 74, 236, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: colors.textLight,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   infoValue: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '800',
     color: colors.text,
   },
-  locationContainer: {
+  locationBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 16,
-    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#F8FAFC',
+    backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
     padding: 12,
     borderRadius: 16,
-  },
-  regularizeBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 18,
-    ...colors.shadow,
-    shadowColor: colors.primary,
-  },
-  regularizeBtnText: {
-    color: colors.white,
-    fontWeight: '900',
-    fontSize: 14,
   },
 });
 
 export default AttendanceScreen;
+

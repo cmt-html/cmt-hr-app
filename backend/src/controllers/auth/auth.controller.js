@@ -22,7 +22,10 @@ exports.registerOrganization = async (req, res) => {
           slug,
           email: adminEmail,
           status: 'APPROVED',
-          subscription: { status: 'TRIAL' },
+          subscription: { 
+            status: 'TRIAL',
+            trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) 
+          },
           users: {
             create: {
               email: adminEmail,
@@ -47,7 +50,10 @@ exports.registerOrganization = async (req, res) => {
       
       const newOrg = mockDb.create('organizations', { 
         name: orgName, slug, email: adminEmail, status: 'APPROVED', 
-        subscription: { status: 'TRIAL' } 
+        subscription: { 
+          status: 'TRIAL',
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        } 
       });
       mockDb.create('users', { 
         organizationId: newOrg.id, email: adminEmail, password: adminPassword, 

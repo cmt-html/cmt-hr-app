@@ -61,7 +61,6 @@ exports.createIndividualUser = async (req, res) => {
         organizationId,
         managerId
       });
-      });
       return res.status(201).json(user);
     } catch (mockError) {
       console.error('❌ Mock DB Error:', mockError);
@@ -124,13 +123,13 @@ exports.getUserProfile = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { firstName, lastName, designation, department, emergencyContact, emergencyContactName, profilePicture } = req.body;
+    const { firstName, lastName, phone, designation, department, emergencyContact, emergencyContactName, profilePicture } = req.body;
     
     // --- PRISMA/POSTGRES MODE ---
     try {
       const updatedUser = await prisma.user.update({
         where: { id: userId },
-        data: { firstName, lastName, designation, department, emergencyContact, emergencyContactName, profilePicture }
+        data: { firstName, lastName, phone, designation, department, emergencyContact, emergencyContactName, profilePicture }
       });
       return res.json(updatedUser);
     } catch (dbError) {
@@ -138,11 +137,12 @@ exports.updateProfile = async (req, res) => {
     }
 
     // --- MOCK MODE FALLBACK ---
-    const updated = mockDb.update('users', userId, { firstName, lastName, designation, department, emergencyContact, emergencyContactName, profilePicture });
+    const updated = mockDb.update('users', userId, { firstName, lastName, phone, designation, department, emergencyContact, emergencyContactName, profilePicture });
     if (!updated) return res.status(404).json({ message: 'User not found (Mock)' });
     
     res.json(updated);
   } catch (error) {
+    console.error('❌ Update Profile Fatal Error:', error);
     res.status(500).json({ message: 'Update failed', error: error.message });
   }
 };

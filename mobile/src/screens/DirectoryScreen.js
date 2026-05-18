@@ -1,13 +1,28 @@
 import React from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, TextInput, StatusBar, Platform, Linking } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  FlatList, 
+  TouchableOpacity, 
+  TextInput, 
+  StatusBar, 
+  Platform, 
+  Linking,
+  Dimensions,
+  ActivityIndicator
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { Search, Phone, Mail, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Search, Phone, Mail, ChevronLeft, ChevronRight, Users } from 'lucide-react-native';
 import api from '../services/api.service';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 const DirectoryScreen = ({ navigation }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
   const [employees, setEmployees] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -18,6 +33,7 @@ const DirectoryScreen = ({ navigation }) => {
 
   const fetchEmployees = async () => {
     try {
+      setLoading(true);
       const response = await api.get('/employees');
       if (Array.isArray(response.data)) {
         setEmployees(response.data);
@@ -38,135 +54,207 @@ const DirectoryScreen = ({ navigation }) => {
   ) : [];
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card}>
-      <View style={[styles.avatar, item.role === 'MANAGER' && { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
+    <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+      <View style={[styles.avatarBox, item.role === 'MANAGER' && { backgroundColor: 'rgba(11, 74, 236, 0.08)' }]}>
         <Text style={[styles.avatarText, item.role === 'MANAGER' && { color: colors.primary }]}>
-          {item.firstName.charAt(0)}
+          {item.firstName.charAt(0)}{item.lastName.charAt(0)}
         </Text>
       </View>
       <View style={styles.info}>
         <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
-        <Text style={styles.role}>{item.designation} • {item.role}</Text>
-        <View style={styles.contactRow}>
+        <Text style={styles.role}>{item.designation}</Text>
+        
+        <View style={styles.actionRow}>
           <TouchableOpacity 
-            style={styles.contactIcon}
+            style={styles.contactBtn}
             onPress={() => item.phone && Linking.openURL(`tel:${item.phone.replace(/\s/g, '')}`)}
           >
-            <Phone size={16} color={colors.primary} />
+            <Phone size={14} color={colors.primary} />
+            <Text style={styles.contactBtnText}>Call</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.contactIcon}
+            style={styles.contactBtn}
             onPress={() => Linking.openURL(`mailto:${item.email}`)}
           >
-            <Mail size={16} color={colors.primary} />
+            <Mail size={14} color={colors.primary} />
+            <Text style={styles.contactBtnText}>Email</Text>
           </TouchableOpacity>
         </View>
-
       </View>
-      <ChevronRight size={20} color={colors.textLight} />
+      <View style={styles.chevronBox}>
+        <ChevronRight size={18} color={colors.textLight} />
+      </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ChevronLeft size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Employee Directory</Text>
-        <View style={{ width: 24 }} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Immersive Header */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={colors.primaryGradient}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <SafeAreaView edges={['top']} style={styles.headerTop}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <ChevronLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>People Directory</Text>
+            <View style={{ width: 44 }} />
+          </SafeAreaView>
+          
+          <View style={styles.searchBoxWrapper}>
+            <View style={styles.searchBox}>
+              <Search size={20} color="rgba(255,255,255,0.6)" />
+              <TextInput 
+                style={styles.searchInput} 
+                placeholder="Find a colleague..." 
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                selectionColor="#FFFFFF"
+              />
+            </View>
+          </View>
+        </LinearGradient>
       </View>
 
-      <View style={styles.searchContainer}>
-        <Search size={20} color={colors.textLight} />
-        <TextInput 
-          style={styles.searchInput} 
-          placeholder="Search employees..." 
-          placeholderTextColor={colors.textLight}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
+      <View style={styles.listWrapper}>
+        <View style={styles.sectionHeader}>
+          <Users size={16} color={colors.primary} />
+          <Text style={styles.sectionTitle}>ALL CONTACTS ({filteredEmployees.length})</Text>
+        </View>
 
-      <FlatList
-        data={filteredEmployees}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={fetchEmployees}
-      />
-    </SafeAreaView>
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading directory...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredEmployees}
+            renderItem={renderItem}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            onRefresh={fetchEmployees}
+            refreshing={loading}
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>No results matching "{searchQuery}"</Text>
+              </View>
+            }
+          />
+        )}
+      </View>
+    </View>
   );
 };
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  header: {
-    padding: 24,
-    backgroundColor: colors.surface,
+  headerWrapper: {
+    zIndex: 10,
+  },
+  headerGradient: {
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...colors.shadow,
-    zIndex: 10,
+    paddingTop: 10,
+    marginBottom: 20,
   },
-  backButton: {
-    padding: 5,
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: colors.text,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  searchContainer: {
+  searchBoxWrapper: {
+    paddingBottom: 8,
+  },
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    margin: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     height: 56,
-    ...colors.shadow,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   searchInput: {
     flex: 1,
     marginLeft: 12,
-    color: colors.text,
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },
+  listWrapper: {
+    flex: 1,
+    padding: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: colors.textLight,
+    letterSpacing: 1.5,
+  },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
     padding: 16,
     borderRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    ...colors.shadow,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
   },
-  avatar: {
-    width: 56,
-    height: 56,
+  avatarBox: {
+    width: 60,
+    height: 60,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 82, 204, 0.05)',
+    backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     color: colors.primary,
+    letterSpacing: 1,
   },
   info: {
     flex: 1,
@@ -181,17 +269,56 @@ const getStyles = (colors) => StyleSheet.create({
     fontSize: 13,
     color: colors.textLight,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  contactRow: {
+  actionRow: {
     flexDirection: 'row',
+    gap: 12,
   },
-  contactIcon: {
-    marginRight: 16,
-    backgroundColor: 'rgba(0, 82, 204, 0.05)',
-    padding: 8,
+  contactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(11, 74, 236, 0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 10,
+  },
+  contactBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  chevronBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: isDarkMode ? '#334155' : '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingBox: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textLight,
+  },
+  emptyBox: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textLight,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
 export default DirectoryScreen;
+

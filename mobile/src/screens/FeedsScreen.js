@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, Image, StatusBar, Platform } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  FlatList, 
+  TouchableOpacity, 
+  StatusBar, 
+  Platform,
+  Dimensions
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { MessageSquare, Heart, Share2, MoreHorizontal, Bell } from 'lucide-react-native';
+import { MessageSquare, Heart, Share2, MoreHorizontal, Bell, Rss, Info } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 const FeedsScreen = () => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
   
   const [announcements, setAnnouncements] = useState([
     {
@@ -52,46 +65,79 @@ const FeedsScreen = () => {
             <Text style={styles.feedDate}>{item.date}</Text>
           </View>
         </View>
-        <TouchableOpacity>
+        <TouchableOpacity style={styles.moreBtn}>
           <MoreHorizontal size={20} color={colors.textLight} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.feedContent}>
-        <Text style={styles.feedTitle}>{item.title}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.feedTitle}>{item.title}</Text>
+          {item.type === 'POLICY' && (
+            <View style={styles.policyBadge}>
+              <Info size={10} color={colors.primary} />
+            </View>
+          )}
+        </View>
         <Text style={styles.feedText}>{item.content}</Text>
-        {item.type === 'POLICY' && (
-          <View style={[styles.typeTag, { backgroundColor: 'rgba(0, 82, 204, 0.1)' }]}>
-            <Text style={[styles.typeTagText, { color: colors.primary }]}>POLICY UPDATE</Text>
+        
+        <View style={styles.typeTagWrapper}>
+          <View style={[styles.typeTag, { backgroundColor: isDarkMode ? '#1E293B' : '#F8FAFC' }]}>
+            <Text style={[styles.typeTagText, { color: colors.primary }]}>#{item.type}</Text>
           </View>
-        )}
+        </View>
       </View>
 
       <View style={styles.feedDivider} />
 
       <View style={styles.feedActions}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Heart size={18} color={colors.textLight} />
-          <Text style={styles.actionText}>{item.likes}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <MessageSquare size={18} color={colors.textLight} />
-          <Text style={styles.actionText}>{item.comments}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Share2 size={18} color={colors.textLight} />
+        <View style={styles.leftActions}>
+          <TouchableOpacity style={styles.actionButton}>
+            <Heart size={18} color={colors.textLight} strokeWidth={2} />
+            <Text style={styles.actionText}>{item.likes}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <MessageSquare size={18} color={colors.textLight} strokeWidth={2} />
+            <Text style={styles.actionText}>{item.comments}</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={styles.shareButton}>
+          <Share2 size={18} color={colors.textLight} strokeWidth={2} />
         </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Feeds</Text>
-        <TouchableOpacity style={styles.notificationBtn}>
-          <Bell size={24} color={colors.text} />
-        </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Immersive Header */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={colors.primaryGradient}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <SafeAreaView edges={['top']} style={styles.headerTop}>
+            <View style={styles.headerTitleRow}>
+              <View style={styles.iconCircle}>
+                <Rss size={20} color="#FFFFFF" />
+              </View>
+              <Text style={styles.headerTitle}>Organizational Feeds</Text>
+            </View>
+            <TouchableOpacity style={styles.notificationBtn}>
+              <Bell size={22} color="#FFFFFF" />
+              <View style={styles.dot} />
+            </TouchableOpacity>
+          </SafeAreaView>
+          
+          <View style={styles.heroSection}>
+            <Text style={styles.heroTitle}>What's Happening?</Text>
+            <Text style={styles.heroSubtitle}>Latest announcements and team updates</Text>
+          </View>
+        </LinearGradient>
       </View>
 
       <FlatList
@@ -101,43 +147,96 @@ const FeedsScreen = () => {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  header: {
-    padding: 24,
-    backgroundColor: colors.surface,
+  headerWrapper: {
+    zIndex: 10,
+  },
+  headerGradient: {
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...colors.shadow,
-    zIndex: 10,
+    paddingTop: 10,
+    marginBottom: 24,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   notificationBtn: {
-    padding: 5,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dot: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  heroSection: {
+    alignItems: 'center',
+  },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    marginTop: 4,
   },
   listContent: {
-    paddingVertical: 20,
+    padding: 20,
+    paddingBottom: 40,
   },
   feedCard: {
-    backgroundColor: colors.surface,
-    marginBottom: 16,
-    borderRadius: 24,
-    marginHorizontal: 16,
-    padding: 20,
-    ...colors.shadow,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    marginBottom: 20,
+    borderRadius: 32,
+    padding: 16,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
   },
   feedHeader: {
     flexDirection: 'row',
@@ -148,20 +247,20 @@ const getStyles = (colors) => StyleSheet.create({
   authorSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   authorAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    backgroundColor: isDarkMode ? '#0F172A' : '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
   },
   avatarText: {
-    fontWeight: '800',
+    fontWeight: '900',
     color: colors.primary,
-    fontSize: 16,
+    fontSize: 18,
   },
   authorName: {
     fontSize: 16,
@@ -173,54 +272,89 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textLight,
     fontWeight: '600',
   },
+  moreBtn: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   feedContent: {
     marginBottom: 16,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
   feedTitle: {
     fontSize: 18,
     fontWeight: '900',
     color: colors.text,
-    marginBottom: 8,
+  },
+  policyBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 100,
+    backgroundColor: 'rgba(11, 74, 236, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   feedText: {
     fontSize: 15,
     color: colors.text,
     lineHeight: 22,
-    marginBottom: 12,
     fontWeight: '500',
+    opacity: 0.8,
+  },
+  typeTagWrapper: {
+    marginTop: 12,
   },
   typeTag: {
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingVertical: 4,
+    borderRadius: 100,
   },
   typeTagText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   feedDivider: {
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
     marginBottom: 12,
-    opacity: 0.5,
   },
   feedActions: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  leftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 28,
+    gap: 6,
   },
   actionText: {
     fontSize: 14,
     color: colors.textLight,
-    marginLeft: 8,
     fontWeight: '700',
   },
+  shareButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
 export default FeedsScreen;
+

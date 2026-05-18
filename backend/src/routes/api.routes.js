@@ -32,6 +32,8 @@ router.get('/dashboard', dashboardController.getDashboardData);
 // Attendance
 router.post('/attendance/check-in', attendanceController.checkIn);
 router.post('/attendance/check-out', attendanceController.checkOut);
+router.post('/attendance/regularize', attendanceController.regularize);
+router.get('/attendance/report-data', attendanceController.getMonthlyReportData);
 router.get('/attendance/report', attendanceController.getMonthlyReport);
 router.get('/attendance/history/:userId', attendanceController.getAttendanceHistory);
 
@@ -43,6 +45,7 @@ router.put('/profile/:userId', userController.updateProfile);
 
 // Leave
 router.get('/leave/stats/:userId', leaveController.getLeaveStats);
+router.get('/leave/history/:userId', leaveController.getUserHistory);
 router.post('/leave/apply', leaveController.applyLeave);
 router.get('/leave/requests', leaveController.getManagerRequests);
 router.put('/leave/approve/:leaveId', leaveController.approveLeave);

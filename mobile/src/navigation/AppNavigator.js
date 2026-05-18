@@ -2,101 +2,113 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { navigationRef } from '../services/NavigationService';
 import { LayoutDashboard, UserCheck, Calendar, User, Rss } from 'lucide-react-native';
-import { useTheme } from '../theme/ThemeContext';
+import { View, Text, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Screens
-import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
+import LoginScreen from '../screens/LoginScreen';
 import AttendanceScreen from '../screens/AttendanceScreen';
 import LeavesScreen from '../screens/LeavesScreen';
-import FeedsScreen from '../screens/FeedsScreen';
-import LeaveDetailsScreen from '../screens/LeaveDetailsScreen';
-import ApplyLeaveScreen from '../screens/ApplyLeaveScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ApplyLeaveScreen from '../screens/ApplyLeaveScreen';
+import LeaveDetailsScreen from '../screens/LeaveDetailsScreen';
 import DirectoryScreen from '../screens/DirectoryScreen';
 import RegularizeScreen from '../screens/RegularizeScreen';
 import HolidaysScreen from '../screens/HolidaysScreen';
-import ActivityScreen from '../screens/ActivityScreen';
-import PersonalInfoScreen from '../screens/PersonalInfoScreen';
-import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import AddEmployeeScreen from '../screens/AddEmployeeScreen';
 import BulkUploadScreen from '../screens/BulkUploadScreen';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import AttendanceReportScreen from '../screens/AttendanceReportScreen';
 import WorkingHoursConfigScreen from '../screens/WorkingHoursConfigScreen';
 import SuperAdminDashboardScreen from '../screens/SuperAdminDashboardScreen';
 import RegisterOrganizationScreen from '../screens/RegisterOrganizationScreen';
-// Placeholder screens for now
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 
-
-import { View, Text } from 'react-native';
-
-const Placeholder = ({ name }) => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text>{name} Screen</Text>
-  </View>
-);
-
-const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
-  const { colors } = useTheme();
-  
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textLight,
-        tabBarStyle: {
-          height: 60,
-          paddingBottom: 10,
-          paddingTop: 10,
-          backgroundColor: colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-        },
-        tabBarIcon: ({ color, size }) => {
-          if (route.name === 'Home') return <LayoutDashboard size={size} color={color} />;
-          if (route.name === 'Feeds') return <Rss size={size} color={color} />;
-          if (route.name === 'Attendance') return <UserCheck size={size} color={color} />;
-          if (route.name === 'Leaves') return <Calendar size={size} color={color} />;
-          if (route.name === 'Profile') return <User size={size} color={color} />;
-        },
-      })}
+        tabBarStyle: { height: 60, paddingBottom: 10 },
+        tabBarActiveTintColor: '#6366f1',
+      }}
     >
-      <Tab.Screen name="Home" component={DashboardScreen} />
-      <Tab.Screen name="Feeds" component={FeedsScreen} />
-      <Tab.Screen name="Attendance" component={AttendanceScreen} />
-      <Tab.Screen name="Leaves" component={LeavesScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen 
+        name="Dashboard" 
+        component={DashboardScreen} 
+        options={{ tabBarIcon: ({ color }) => <LayoutDashboard color={color} size={24} /> }}
+      />
+      <Tab.Screen 
+        name="Feeds" 
+        component={DashboardScreen} // Placeholder
+        options={{ tabBarIcon: ({ color }) => <Rss color={color} size={24} /> }}
+      />
+      <Tab.Screen 
+        name="Attendance" 
+        component={AttendanceScreen} 
+        options={{ tabBarIcon: ({ color }) => <UserCheck color={color} size={24} /> }}
+      />
+      <Tab.Screen 
+        name="Leaves" 
+        component={LeavesScreen} 
+        options={{ tabBarIcon: ({ color }) => <Calendar color={color} size={24} /> }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{ tabBarIcon: ({ color }) => <User color={color} size={24} /> }}
+      />
     </Tab.Navigator>
   );
 };
 
 const AppNavigator = () => {
+  const [loading, setLoading] = React.useState(true);
+  const [initialRoute, setInitialRoute] = React.useState('Login');
+
+  React.useEffect(() => {
+    const checkAuth = async () => {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) setInitialRoute('Main');
+      setLoading(false);
+    };
+    checkAuth();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#6366f1" />
+      </View>
+    );
+  }
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="RegisterOrganization" component={RegisterOrganizationScreen} />
       <Stack.Screen name="Main" component={MainTabs} />
 
+      {/* Inner Screens */}
       <Stack.Screen name="ApplyLeave" component={ApplyLeaveScreen} />
       <Stack.Screen name="LeaveDetails" component={LeaveDetailsScreen} />
       <Stack.Screen name="Directory" component={DirectoryScreen} />
       <Stack.Screen name="Regularize" component={RegularizeScreen} />
       <Stack.Screen name="Holidays" component={HolidaysScreen} />
-      <Stack.Screen name="Activity" component={ActivityScreen} />
-      <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
-      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
       <Stack.Screen name="AddEmployee" component={AddEmployeeScreen} />
       <Stack.Screen name="BulkUpload" component={BulkUploadScreen} />
+      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
       <Stack.Screen name="AttendanceReport" component={AttendanceReportScreen} />
       <Stack.Screen name="WorkingHoursConfig" component={WorkingHoursConfigScreen} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboardScreen} />
+      <Stack.Screen name="Subscription" component={SubscriptionScreen} />
     </Stack.Navigator>
-
   );
 };
 

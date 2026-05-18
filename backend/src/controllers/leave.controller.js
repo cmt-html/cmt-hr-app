@@ -6,13 +6,14 @@ exports.getLeaveStats = async (req, res) => {
     const { userId } = req.params;
     
     let leaves = [];
-    // --- PRISMA/POSTGRES MODE ---
     try {
       leaves = await prisma.leave.findMany({ where: { userId } });
     } catch (dbError) {
       console.warn('⚠️ Leave Postgres Error, using Mock:', dbError.message);
-      leaves = mockDb.find('leaves', { userId });
+      leaves = mockDb.find('leaves', { userId }) || [];
     }
+
+    if (!Array.isArray(leaves)) leaves = [];
 
     const stats = {
       taken: {
@@ -71,12 +72,19 @@ exports.applyLeave = async (req, res) => {
 exports.getManagerRequests = async (req, res) => {
   try {
     const organizationId = req.organizationId;
-    
+    const { managerId } = req.query;
+
+    const userWhere = managerId ? { managerId } : undefined;
+
     // --- PRISMA/POSTGRES MODE ---
     try {
       const requests = await prisma.leave.findMany({
-        where: { organizationId, status: 'PENDING' },
-        include: { user: true }
+        where: {
+          organizationId,
+          status: 'PENDING',
+          ...(userWhere ? { user: userWhere } : {}),
+        },
+        include: { user: true },
       });
       return res.json(requests);
     } catch (dbError) {
@@ -84,8 +92,22 @@ exports.getManagerRequests = async (req, res) => {
     }
 
     // --- MOCK MODE FALLBACK ---
-    const requests = mockDb.find('leaves', { organizationId, status: 'PENDING' });
-    res.json(requests);
+    let requests = mockDb.find('leaves', { organizationId, status: 'PENDING' }) || [];
+    if (managerId) {
+      requests = requests.filter((l) => {
+        const u = mockDb.findOne('users', { id: l.userId });
+        return u && String(u.managerId || '') === String(managerId);
+      });
+    }
+    const withUsers = requests.map((l) => ({
+      ...l,
+      user: mockDb.findOne('users', { id: l.userId }) || {
+        firstName: 'Unknown',
+        lastName: 'User',
+        email: '',
+      },
+    }));
+    res.json(withUsers);
   } catch (error) {
     res.status(500).json({ message: 'Requests fetch failed', error: error.message });
   }

@@ -13,37 +13,27 @@
       "createdAt": "2026-05-13T11:43:00Z"
     },
     {
-      "name": "Imran",
-      "slug": "test",
-      "email": "imran@cmt.com",
+      "name": "cmtt",
+      "slug": "cmtt",
+      "email": "admin@cmtt.com",
       "status": "APPROVED",
       "subscription": {
         "status": "TRIAL"
       },
-      "id": "1778673264363",
-      "createdAt": "2026-05-13T11:54:24.363Z"
+      "id": "1778750201409",
+      "createdAt": "2026-05-14T09:16:41.409Z"
     },
     {
-      "name": "xzy",
-      "slug": "xy",
-      "email": "xyz@cmt.com",
+      "name": "Hero",
+      "slug": "hero",
+      "email": "imran@hero.com",
       "status": "APPROVED",
       "subscription": {
-        "status": "TRIAL"
+        "status": "TRIAL",
+        "trialEndsAt": "2026-05-28T09:56:24.308Z"
       },
-      "id": "1778674904305",
-      "createdAt": "2026-05-13T12:21:44.305Z"
-    },
-    {
-      "name": "xyz",
-      "slug": "cmt",
-      "email": "xyz@cmt.com",
-      "status": "APPROVED",
-      "subscription": {
-        "status": "TRIAL"
-      },
-      "id": "1778675514730",
-      "createdAt": "2026-05-13T12:31:54.730Z"
+      "id": "1778752584308",
+      "createdAt": "2026-05-14T09:56:24.308Z"
     }
   ],
   "users": [
@@ -97,37 +87,78 @@
       "createdAt": "2026-05-13T11:43:00Z"
     },
     {
-      "organizationId": "1778673264363",
-      "email": "imran@cmt.com",
-      "password": "1234",
-      "firstName": "Imran",
-      "lastName": "Khan",
-      "role": "ORG_ADMIN",
-      "id": "1778673264364",
-      "createdAt": "2026-05-13T11:54:24.364Z"
-    },
-    {
-      "organizationId": "1778674904305",
-      "email": "xyz@cmt.com",
+      "organizationId": "1778750201409",
+      "email": "admin@cmtt.com",
       "password": "1234",
       "firstName": "Im",
-      "lastName": "Kh",
+      "lastName": "Khan",
       "role": "ORG_ADMIN",
-      "id": "1778674904306",
-      "createdAt": "2026-05-13T12:21:44.306Z"
+      "id": "1778750201410",
+      "createdAt": "2026-05-14T09:16:41.410Z"
     },
     {
-      "organizationId": "1778675514730",
-      "email": "xyz@cmt.com",
-      "password": "",
+      "organizationId": "1778752584308",
+      "email": "imran@hero.com",
+      "password": "1234",
       "firstName": "Imran",
       "lastName": "Khan",
       "role": "ORG_ADMIN",
-      "id": "1778675514731",
-      "createdAt": "2026-05-13T12:31:54.731Z"
+      "id": "1778752584309",
+      "createdAt": "2026-05-14T09:56:24.309Z"
     }
   ],
-  "attendances": [],
+  "attendances": [
+    {
+      "userId": "user_admin",
+      "organizationId": "org_1",
+      "checkIn": "2026-05-14T09:54:21.495Z",
+      "location": "Remote Office",
+      "status": "PRESENT",
+      "checkOut": "2026-05-14T09:54:37.625Z",
+      "id": "1778752461495",
+      "createdAt": "2026-05-14T09:54:21.495Z"
+    },
+    {
+      "userId": "user_admin",
+      "organizationId": "org_1",
+      "checkIn": "2026-05-14T09:54:47.202Z",
+      "location": "Remote Office",
+      "status": "PRESENT",
+      "checkOut": null,
+      "id": "1778752487202",
+      "createdAt": "2026-05-14T09:54:47.202Z"
+    },
+    {
+      "userId": "1778752584309",
+      "organizationId": "1778752584308",
+      "checkIn": "2026-05-14T10:47:35.864Z",
+      "location": "Remote Office",
+      "status": "PRESENT",
+      "checkOut": "2026-05-14T10:47:39.894Z",
+      "id": "1778755655864",
+      "createdAt": "2026-05-14T10:47:35.864Z"
+    },
+    {
+      "userId": "1778752584309",
+      "organizationId": "1778752584308",
+      "checkIn": "2026-05-14T10:47:40.930Z",
+      "location": "Remote Office",
+      "status": "PRESENT",
+      "checkOut": "2026-05-14T10:47:45.759Z",
+      "id": "1778755660930",
+      "createdAt": "2026-05-14T10:47:40.930Z"
+    },
+    {
+      "userId": "1778752584309",
+      "organizationId": "1778752584308",
+      "checkIn": "2026-05-14T10:47:47.390Z",
+      "location": "Remote Office",
+      "status": "PRESENT",
+      "checkOut": null,
+      "id": "1778755667390",
+      "createdAt": "2026-05-14T10:47:47.390Z"
+    }
+  ],
   "leaves": [],
   "configs": [],
   "plans": [

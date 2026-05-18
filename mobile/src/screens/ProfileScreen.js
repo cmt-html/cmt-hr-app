@@ -1,12 +1,41 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, StatusBar, Platform, Dimensions, Image, ActivityIndicator, Alert } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  ScrollView, 
+  Switch, 
+  StatusBar, 
+  Platform, 
+  Dimensions, 
+  Image, 
+  ActivityIndicator, 
+  Alert 
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
-import { User, Mail, Phone, Briefcase, Settings, LogOut, ChevronRight, Bell, Moon, Sun, Shield, Camera, ChevronLeft, Calendar, UserCheck } from 'lucide-react-native';
+import { 
+  User, 
+  Briefcase, 
+  Settings, 
+  LogOut, 
+  ChevronRight, 
+  Bell, 
+  Moon, 
+  Sun, 
+  Camera, 
+  ChevronLeft, 
+  HelpCircle,
+  Smartphone,
+  ShieldCheck
+} from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { API_URL } from '../services/api.service';
+import CloudMojoLogo from '../components/CloudMojoLogo';
 
 const { width } = Dimensions.get('window');
 
@@ -25,7 +54,6 @@ const ProfileScreen = ({ navigation }) => {
       setUserData(JSON.parse(savedUser));
     }
   };
-
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -91,152 +119,179 @@ const ProfileScreen = ({ navigation }) => {
   const styles = getStyles(colors, isDarkMode);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
-        <LinearGradient
-          colors={colors.primaryGradient}
-          style={styles.headerGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.headerTop}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <ChevronLeft size={24} color={colors.white} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitleText}>My Profile</Text>
-            <View style={{ width: 40 }} />
-          </View>
-          
-          <View style={styles.profileInfo}>
-            <View style={styles.avatarWrapper}>
-              <TouchableOpacity style={styles.avatarContainer} onPress={pickImage} disabled={uploading}>
-                <View style={styles.avatarInner}>
-                  {uploading ? (
-                    <ActivityIndicator color={colors.white} />
-                  ) : userData?.profilePicture ? (
-                    <Image 
-                      source={{ uri: userData.profilePicture }} 
-                      style={styles.avatarImage} 
-                    />
-                  ) : (
-                    <Text style={styles.avatarText}>
-                      {userData ? getInitials(userData.firstName, userData.lastName) : '??'}
-                    </Text>
-                  )}
-                </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Immersive Header */}
+        <View style={styles.headerWrapper}>
+          <LinearGradient
+            colors={colors.primaryGradient}
+            style={styles.headerGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <SafeAreaView edges={['top']} style={styles.headerTop}>
+              <TouchableOpacity 
+                style={styles.backBtn}
+                onPress={() => navigation.goBack()}
+              >
+                <ChevronLeft size={24} color="#FFFFFF" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.editAvatar} onPress={pickImage} disabled={uploading}>
-                <Camera size={16} color={colors.primary} />
-              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Account Settings</Text>
+              <View style={{ width: 44 }} />
+            </SafeAreaView>
+            
+            <View style={styles.profileSection}>
+              <View style={styles.avatarWrapper}>
+                <TouchableOpacity style={styles.avatarContainer} onPress={pickImage} activeOpacity={0.9}>
+                  <View style={styles.avatarInner}>
+                    {uploading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : userData?.profilePicture ? (
+                      <Image source={{ uri: userData.profilePicture }} style={styles.avatarImage} />
+                    ) : (
+                      <Text style={styles.avatarText}>
+                        {userData ? getInitials(userData.firstName, userData.lastName) : '??'}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.editBadge}>
+                    <Camera size={14} color={colors.primary} />
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.userName}>
+                {userData ? `${userData.firstName} ${userData.lastName}` : 'User'}
+              </Text>
+              <View style={styles.roleBadge}>
+                <ShieldCheck size={12} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.roleBadgeText}>{userData?.designation || 'Member'}</Text>
+              </View>
             </View>
-
-            <Text style={styles.userName}>
-              {userData ? `${userData.firstName} ${userData.lastName}` : 'User'}
-            </Text>
-            <Text style={styles.userRole}>
-              {userData?.designation || 'Position'} • {userData?.department || 'Department'}
-            </Text>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.content}>
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
+          </LinearGradient>
+          
+          {/* Floating Stats Row */}
+          <View style={styles.statsFloating}>
+            <View style={styles.statBox}>
               <Text style={styles.statLabel}>Employee ID</Text>
-              <Text style={styles.statValue}>{userData?.employeeId || 'N/A'}</Text>
+              <Text style={styles.statVal}>{userData?.employeeId || 'N/A'}</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Role</Text>
-              <Text style={styles.statValue}>{userData?.role || 'User'}</Text>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Department</Text>
+              <Text style={styles.statVal} numberOfLines={1}>{userData?.department || 'N/A'}</Text>
             </View>
           </View>
+        </View>
 
-          {/* Role-Based Admin Shortcut */}
-          {(userData?.role === 'HR' || userData?.role === 'ORG_ADMIN' || userData?.role === 'ADMIN') && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Admin Controls</Text>
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => navigation.navigate('AdminDashboard')}
-              >
-                <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
-                  <Shield size={20} color={colors.primary} />
-                </View>
-                <Text style={styles.menuText}>Go to Admin Dashboard</Text>
-                <ChevronRight size={18} color={colors.textLight} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Information Group */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Personal Details</Text>
-            
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('PersonalInfo')}>
-              <View style={styles.menuIconContainer}>
-                <User size={20} color={colors.primary} />
+        <View style={styles.menuContent}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>PROFESSIONAL</Text>
+          </View>
+          
+          <View style={styles.premiumCard}>
+            <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('PersonalInfo')}>
+              <View style={[styles.iconBox, { backgroundColor: '#EEF2FF' }]}>
+                <User size={20} color="#6366F1" />
               </View>
-              <Text style={styles.menuText}>View My Information</Text>
-              <ChevronRight size={18} color={colors.textLight} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Personal Information</Text>
+                <Text style={styles.rowSub}>Basic details and contacts</Text>
+              </View>
+              <ChevronRight size={18} color="#CBD5E1" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Directory')}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                <Briefcase size={20} color={colors.success} />
+            <View style={styles.rowLine} />
+
+            <TouchableOpacity style={styles.menuRow} onPress={() => navigation.navigate('Directory')}>
+              <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
+                <Briefcase size={20} color="#10B981" />
               </View>
-              <Text style={styles.menuText}>Employee Directory</Text>
-              <ChevronRight size={18} color={colors.textLight} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Team Directory</Text>
+                <Text style={styles.rowSub}>Connect with colleagues</Text>
+              </View>
+              <ChevronRight size={18} color="#CBD5E1" />
             </TouchableOpacity>
           </View>
 
-          {/* App Settings Group */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>App Preferences</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>PREFERENCES</Text>
+          </View>
 
-            <View style={styles.menuItem}>
-              <View style={[styles.menuIconContainer, { backgroundColor: isDarkMode ? '#2D3748' : '#F3E5F5' }]}>
-                {isDarkMode ? <Moon size={20} color="#A78BFA" /> : <Sun size={20} color="#9C27B0" />}
+          <View style={styles.premiumCard}>
+            <View style={styles.menuRow}>
+              <View style={[styles.iconBox, { backgroundColor: isDarkMode ? '#1E293B' : '#F8FAFC' }]}>
+                {isDarkMode ? <Moon size={20} color="#818CF8" /> : <Sun size={20} color="#F59E0B" />}
               </View>
-              <Text style={styles.menuText}>Dark Mode</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Dark Mode</Text>
+                <Text style={styles.rowSub}>{isDarkMode ? 'Immersive theme active' : 'Classic theme active'}</Text>
+              </View>
               <Switch 
                 value={isDarkMode} 
                 onValueChange={toggleTheme}
-                trackColor={{ true: colors.primary }} 
+                trackColor={{ true: colors.primary, false: '#E2E8F0' }} 
               />
             </View>
 
-            <View style={styles.menuItem}>
-              <View style={[styles.menuIconContainer, { backgroundColor: '#FFF3E0' }]}>
-                <Bell size={20} color={colors.warning} />
+            <View style={styles.rowLine} />
+
+            <View style={styles.menuRow}>
+              <View style={[styles.iconBox, { backgroundColor: '#FFF7ED' }]}>
+                <Bell size={20} color="#F97316" />
               </View>
-              <Text style={styles.menuText}>Notifications</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Push Notifications</Text>
+                <Text style={styles.rowSub}>Daily attendance reminders</Text>
+              </View>
               <Switch value={true} trackColor={{ true: colors.primary }} />
             </View>
           </View>
 
-          {/* Logout Section */}
-          <View style={[styles.section, { marginBottom: 40 }]}>
-            <TouchableOpacity 
-              style={[styles.menuItem, { borderBottomWidth: 0 }]}
-              onPress={handleLogout}
-            >
-              <View style={[styles.menuIconContainer, { backgroundColor: '#FFEBEE' }]}>
-                <LogOut size={20} color={colors.error} />
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>SUPPORT</Text>
+          </View>
+
+          <View style={styles.premiumCard}>
+            <TouchableOpacity style={styles.menuRow}>
+              <View style={[styles.iconBox, { backgroundColor: '#F0F9FF' }]}>
+                <Smartphone size={20} color="#0EA5E9" />
               </View>
-              <Text style={[styles.menuText, { color: colors.error }]}>Log Out</Text>
+              <Text style={[styles.rowTitle, { flex: 1 }]}>About CloudMojo HR</Text>
+              <ChevronRight size={18} color="#CBD5E1" />
+            </TouchableOpacity>
+            
+            <View style={styles.rowLine} />
+
+            <TouchableOpacity style={styles.menuRow}>
+              <View style={[styles.iconBox, { backgroundColor: '#F1F5F9' }]}>
+                <HelpCircle size={20} color="#64748B" />
+              </View>
+              <Text style={[styles.rowTitle, { flex: 1 }]}>Help & Feedback</Text>
+              <ChevronRight size={18} color="#CBD5E1" />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.versionText}>Version 1.0.0 (CloudMojo Tech)</Text>
+          <TouchableOpacity 
+            style={styles.logoutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <View style={styles.logoutIconBox}>
+              <LogOut size={20} color="#EF4444" />
+            </View>
+            <Text style={styles.logoutText}>Sign Out Account</Text>
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <CloudMojoLogo width={120} wordmarkColor={colors.textLight} />
+            <Text style={styles.version}>v1.2.4</Text>
+          </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -245,59 +300,60 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  scrollContent: {
+    paddingBottom: 60,
+  },
+  headerWrapper: {
+    marginBottom: 40,
+    zIndex: 10,
+  },
   headerGradient: {
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 20 : 60,
-    paddingBottom: 40,
+    paddingBottom: 80,
     paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    paddingTop: 10,
+    marginBottom: 32,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitleText: {
-    color: colors.white,
-    fontSize: 18,
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  profileInfo: {
+  profileSection: {
     alignItems: 'center',
-    overflow: 'visible',
   },
   avatarWrapper: {
-    width: 110,
-    height: 110,
-    marginBottom: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 16,
     position: 'relative',
-    overflow: 'visible',
   },
   avatarContainer: {
     width: 100,
     height: 100,
     borderRadius: 35,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   avatarInner: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 35,
+    flex: 1,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
@@ -307,111 +363,165 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     height: '100%',
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '900',
-    color: colors.white,
+    color: '#FFFFFF',
   },
-  editAvatar: {
+  editBadge: {
     position: 'absolute',
-    bottom: 5,
-    right: 5,
-    backgroundColor: colors.white,
+    bottom: -4,
+    right: -4,
     width: 32,
     height: 32,
     borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    ...colors.shadow,
-    zIndex: 20,
-    elevation: 5,
+    ...colors.premiumShadow,
   },
   userName: {
     fontSize: 24,
     fontWeight: '900',
-    color: colors.white,
-    marginBottom: 4,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
-  userRole: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '600',
-  },
-  content: {
-    padding: 24,
-  },
-  statsRow: {
+  roleBadge: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    padding: 20,
-    borderRadius: 24,
-    marginBottom: 32,
-    marginTop: -45,
-    ...colors.shadow,
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 100,
+    marginTop: 8,
   },
-  statItem: {
+  roleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statsFloating: {
+    position: 'absolute',
+    bottom: -30,
+    left: 20,
+    right: 20,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    borderRadius: 24,
+    flexDirection: 'row',
+    padding: 20,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
+  },
+  statBox: {
     flex: 1,
     alignItems: 'center',
   },
   statDivider: {
     width: 1,
     height: '60%',
-    backgroundColor: colors.border,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
     alignSelf: 'center',
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textLight,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 16,
     fontWeight: '800',
-    color: colors.text,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.textLight,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 16,
-    paddingLeft: 4,
+    marginBottom: 4,
   },
-  menuItem: {
+  statVal: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  menuContent: {
+    paddingHorizontal: 24,
+  },
+  sectionHeader: {
+    marginBottom: 16,
+    paddingHorizontal: 4,
+    marginTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: colors.textLight,
+    letterSpacing: 1.5,
+  },
+  premiumCard: {
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    borderRadius: 24,
+    overflow: 'hidden',
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
+  },
+  menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     padding: 16,
-    borderRadius: 20,
-    marginBottom: 12,
-    ...colors.shadow,
+    gap: 16,
   },
-  menuIconContainer: {
+  iconBox: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(0, 82, 204, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
-  menuText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
+  rowTitle: {
+    fontSize: 16,
+    fontWeight: '700',
     color: colors.text,
   },
-  versionText: {
-    textAlign: 'center',
+  rowSub: {
+    fontSize: 12,
+    color: colors.textLight,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  rowLine: {
+    height: 1,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
+    marginHorizontal: 16,
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2',
+    padding: 16,
+    borderRadius: 24,
+    marginTop: 40,
+    gap: 16,
+    ...colors.premiumShadow,
+  },
+  logoutIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 60,
+    gap: 12,
+  },
+  version: {
     fontSize: 12,
     color: colors.textLight,
     fontWeight: '600',
-  },
+  }
 });
 
 export default ProfileScreen;
+
+

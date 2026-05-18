@@ -24,6 +24,19 @@ const tenantMiddleware = async (req, res, next) => {
     if (!org) return res.status(404).json({ message: 'Organization not found' });
     if (org.status === 'SUSPENDED') return res.status(403).json({ message: 'Organization is suspended' });
 
+    // --- PAYMENT ENFORCEMENT ---
+    const sub = org.subscription || {};
+    const isTrialActive = sub.status === 'TRIAL' && sub.trialEndsAt && new Date(sub.trialEndsAt) > new Date();
+    const isPaidActive = sub.status === 'ACTIVE' || sub.status === 'APPROVED' || sub.status === 'PAID';
+
+    if (!isTrialActive && !isPaidActive && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(402).json({ 
+        message: 'Payment Required', 
+        reason: 'SUBSCRIPTION_EXPIRED',
+        organizationName: org.name
+      });
+    }
+
     req.organizationId = req.user.organizationId;
     req.organization = org;
     next();

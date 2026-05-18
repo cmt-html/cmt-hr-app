@@ -1,12 +1,38 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, StatusBar, Platform, ScrollView, Share, Alert } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  StatusBar, 
+  Platform, 
+  ScrollView, 
+  Share, 
+  Alert,
+  Dimensions
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import api from '../services/api.service';
-import { ChevronLeft, UserPlus, FileText, ChevronRight, LayoutGrid, Download, Clock } from 'lucide-react-native';
+import { 
+  ChevronLeft, 
+  UserPlus, 
+  FileText, 
+  ChevronRight, 
+  LayoutGrid, 
+  Download, 
+  Clock,
+  Settings,
+  ShieldCheck,
+  CreditCard
+} from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 const AdminDashboardScreen = ({ navigation }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
 
   const handleDownloadReport = async () => {
     try {
@@ -20,8 +46,6 @@ const AdminDashboardScreen = ({ navigation }) => {
       });
 
       if (response.data) {
-        // In a real device, we could save this as a .csv file using expo-file-system
-        // For now, we share the content
         await Share.share({
           message: response.data,
           title: `Attendance_Report_${month}_${year}`,
@@ -74,23 +98,53 @@ const AdminDashboardScreen = ({ navigation }) => {
       icon: LayoutGrid,
       onPress: () => navigation.navigate('Directory'),
       color: colors.warning,
+    },
+    {
+      id: 'billing',
+      title: 'Billing & Subscription',
+      subtitle: 'Manage plans and payments',
+      icon: CreditCard,
+      onPress: () => navigation.navigate('Subscription'),
+      color: '#10B981',
     }
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ChevronLeft size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Admin Control</Text>
-        <View style={{ width: 24 }} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Immersive Header */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={colors.primaryGradient}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <SafeAreaView edges={['top']} style={styles.headerTop}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <ChevronLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Management</Text>
+            <TouchableOpacity style={styles.headerActionBtn}>
+              <Settings size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </SafeAreaView>
+          
+          <View style={styles.heroSection}>
+            <View style={styles.badge}>
+              <ShieldCheck size={14} color="#FFFFFF" />
+              <Text style={styles.badgeText}>Admin Console</Text>
+            </View>
+            <Text style={styles.heroTitle}>Organization Hub</Text>
+            <Text style={styles.heroSubtitle}>Control and monitor your workforce</Text>
+          </View>
+        </LinearGradient>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Admin Dashboard</Text>
-          <Text style={styles.welcomeSubtitle}>Manage your workforce dynamically</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.sectionLabel}>
+          <Text style={styles.sectionLabelText}>CORE ACTIONS</Text>
         </View>
 
         {menuItems.map((item) => (
@@ -98,78 +152,137 @@ const AdminDashboardScreen = ({ navigation }) => {
             key={item.id} 
             style={styles.menuCard}
             onPress={item.onPress}
+            activeOpacity={0.7}
           >
             <View style={[styles.iconContainer, { backgroundColor: item.color + '15' }]}>
-              <item.icon size={24} color={item.color} />
+              <item.icon size={22} color={item.color} strokeWidth={2.5} />
             </View>
             <View style={styles.menuInfo}>
               <Text style={styles.menuTitle}>{item.title}</Text>
               <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
             </View>
-            <ChevronRight size={20} color={colors.textLight} />
+            <View style={styles.chevronBox}>
+              <ChevronRight size={18} color={colors.textLight} />
+            </View>
           </TouchableOpacity>
         ))}
 
-
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Quick Tip</Text>
-          <Text style={styles.infoText}>
-            For bulk uploads, ensure your Excel sheet follows the standard template to avoid registration errors.
-          </Text>
+          <View style={styles.infoIconBox}>
+            <FileText size={20} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.infoTitle}>Quick Tip</Text>
+            <Text style={styles.infoText}>
+              For bulk uploads, ensure your Excel sheet follows the standard template to avoid registration errors.
+            </Text>
+          </View>
         </View>
+        
+        <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
-const getStyles = (colors) => StyleSheet.create({
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  header: {
-    padding: 24,
-    backgroundColor: colors.surface,
+  headerWrapper: {
+    zIndex: 10,
+  },
+  headerGradient: {
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...colors.shadow,
-    zIndex: 10,
+    paddingTop: 10,
+    marginBottom: 24,
   },
-  backButton: {
-    padding: 5,
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  headerActionBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroSection: {
+    alignItems: 'center',
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    marginBottom: 12,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
     fontWeight: '900',
-    color: colors.text,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+    marginTop: 4,
   },
   scrollContent: {
     padding: 24,
+    paddingTop: 32,
   },
-  welcomeSection: {
-    marginBottom: 32,
+  sectionLabel: {
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
-  welcomeTitle: {
-    fontSize: 28,
+  sectionLabelText: {
+    fontSize: 12,
     fontWeight: '900',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  welcomeSubtitle: {
-    fontSize: 15,
     color: colors.textLight,
-    fontWeight: '600',
+    letterSpacing: 1.5,
   },
   menuCard: {
-    backgroundColor: colors.surface,
-    padding: 20,
+    backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+    padding: 16,
     borderRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    ...colors.shadow,
+    ...colors.premiumShadow,
+    borderWidth: 1,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
   },
   iconContainer: {
     width: 52,
@@ -183,7 +296,7 @@ const getStyles = (colors) => StyleSheet.create({
     flex: 1,
   },
   menuTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: colors.text,
     marginBottom: 2,
@@ -193,26 +306,45 @@ const getStyles = (colors) => StyleSheet.create({
     color: colors.textLight,
     fontWeight: '600',
   },
+  chevronBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: isDarkMode ? '#334155' : '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   infoCard: {
-    backgroundColor: 'rgba(99, 102, 241, 0.05)',
-    padding: 24,
+    backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
+    padding: 20,
     borderRadius: 24,
     marginTop: 16,
+    flexDirection: 'row',
+    gap: 16,
     borderWidth: 1,
     borderColor: 'rgba(99, 102, 241, 0.1)',
   },
+  infoIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   infoTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
     color: colors.primary,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   infoText: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 18,
     fontWeight: '500',
   },
 });
 
 export default AdminDashboardScreen;
+
