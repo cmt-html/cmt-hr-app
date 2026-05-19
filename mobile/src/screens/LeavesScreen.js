@@ -37,6 +37,12 @@ const LeavesScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors, isDarkMode);
   const isManagerMode = route.params?.mode === 'manager';
+
+  const safeLocalDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  };
   
   const [requests, setRequests] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -190,7 +196,7 @@ const LeavesScreen = ({ navigation, route }) => {
                       <View style={styles.metaItem}>
                         <Calendar size={14} color={colors.primary} />
                         <Text style={styles.metaText}>
-                          {new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - {new Date(item.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                          {safeLocalDate(item.startDate)} - {safeLocalDate(item.endDate)}
                         </Text>
                       </View>
                     </View>
@@ -247,8 +253,15 @@ const LeavesScreen = ({ navigation, route }) => {
                 {userHistory.map((item, index) => {
                   const startDate = new Date(item.startDate);
                   const endDate = new Date(item.endDate);
-                  const diffTime = Math.abs(endDate - startDate);
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                  
+                  const isStartDateValid = !isNaN(startDate.getTime());
+                  const isEndDateValid = !isNaN(endDate.getTime());
+                  
+                  let diffDays = '-';
+                  if (isStartDateValid && isEndDateValid) {
+                    const diffTime = Math.abs(endDate - startDate);
+                    diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                  }
                   
                   const statusColor = item.status === 'APPROVED' ? colors.success : item.status === 'REJECTED' ? colors.error : colors.warning;
                   const statusBg = item.status === 'APPROVED' ? '#ECFDF5' : item.status === 'REJECTED' ? '#FEF2F2' : '#FFFBEB';
@@ -262,9 +275,9 @@ const LeavesScreen = ({ navigation, route }) => {
                           <View style={styles.historyMeta}>
                             <Clock size={12} color={colors.textLight} />
                             <Text style={styles.historyDate}>
-                              {startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {endDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                              {safeLocalDate(item.startDate)} - {safeLocalDate(item.endDate)}
                             </Text>
-                            <Text style={styles.historyDuration}>• {diffDays} {diffDays === 1 ? 'Day' : 'Days'}</Text>
+                            <Text style={styles.historyDuration}>• {diffDays} {diffDays === '1' || diffDays === 1 ? 'Day' : 'Days'}</Text>
                           </View>
                         </View>
                         <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>

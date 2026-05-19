@@ -178,9 +178,48 @@ const LocationDisplay = ({ location, colors }) => {
   );
 };
 
+const parseSafeDate = (dateStr) => {
+  if (!dateStr) return null;
+  if (dateStr instanceof Date) return dateStr;
+  
+  // Try standard parsing
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    if (year >= 1900 && year <= 2100) {
+      return d;
+    }
+  }
+  
+  // Try regex parsing for YYYY-MM-DD
+  const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    const parsed = new Date(year, month, day);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  
+  return null;
+};
+
 const AttendanceReportScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors, isDarkMode);
+  
+  const safeLocalTime = (dateStr) => {
+    const d = parseSafeDate(dateStr);
+    if (!d) return '-';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const safeLocalDate = (dateStr) => {
+    const d = parseSafeDate(dateStr);
+    if (!d) return '-';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -309,30 +348,24 @@ const AttendanceReportScreen = ({ navigation }) => {
                       <Clock size={14} color={colors.textLight} />
                       <Text style={styles.detailLabel}>Check-in:</Text>
                       <Text style={styles.detailValue}>
-                        {record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                        {safeLocalTime(record.checkIn)}
                       </Text>
                     </View>
                     <View style={styles.detailItem}>
                       <Clock size={14} color={colors.textLight} />
                       <Text style={styles.detailLabel}>Check-out:</Text>
                       <Text style={styles.detailValue}>
-                        {record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                        {safeLocalTime(record.checkOut)}
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.cardFooter}>
                     <Text style={styles.dateText}>
-                      {record.date || record.checkIn
-                        ? new Date(record.date || record.checkIn).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : '—'}
+                      {safeLocalDate(record.date || record.checkIn)}
                     </Text>
                     <View style={{ flex: 1, marginLeft: 10, alignItems: 'flex-end' }}>
-                      <LocationDisplay location={record.location} colors={colors} />
+                      <LocationDisplay location={(record.location || '').split(' | ')[0] || 'Office'} colors={colors} />
                     </View>
                   </View>
                 </TouchableOpacity>

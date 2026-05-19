@@ -31,8 +31,35 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { attendanceService, leaveService } from '../services/api.service';
+import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
+
+const parseSafeDate = (dateStr) => {
+  if (!dateStr) return null;
+  if (dateStr instanceof Date) return dateStr;
+  
+  // Try standard parsing
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    if (year >= 1900 && year <= 2100) {
+      return d;
+    }
+  }
+  
+  // Try regex parsing for YYYY-MM-DD
+  const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    const parsed = new Date(year, month, day);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  
+  return null;
+};
 
 const DashboardScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
@@ -41,6 +68,7 @@ const DashboardScreen = ({ navigation }) => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [timer, setTimer] = useState(0);
+  const [hasCheckedOutToday, setHasCheckedOutToday] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [leaveBalance, setLeaveBalance] = useState(0);
@@ -101,15 +129,39 @@ const DashboardScreen = ({ navigation }) => {
       const history = await attendanceService.getHistory(userId);
       if (history && history.length > 0) {
         const today = new Date().toISOString().split('T')[0];
-        const todayRecord = history.find(r => r.date?.startsWith(today));
+        const todayRecord = history.find(r => {
+          const rawDate = r.date || r.checkIn || r.createdAt;
+          if (!rawDate) return false;
+          const rawDateStr = typeof rawDate === 'string' ? rawDate : (rawDate instanceof Date ? rawDate.toISOString() : String(rawDate));
+          return rawDateStr.startsWith(today);
+        });
         
         if (todayRecord && !todayRecord.checkOut) {
+          // ── Calculate elapsed seconds from the stored checkIn timestamp ──
+          const parsedCheckIn = parseSafeDate(todayRecord.checkIn);
+          const start = parsedCheckIn ? parsedCheckIn.getTime() : NaN;
+          const elapsedSeconds = !isNaN(start)
+            ? Math.floor((new Date().getTime() - start) / 1000)
+            : 0;
+
+          // Set timer FIRST so the interval never starts from 0
+          setTimer(elapsedSeconds);
           setIsCheckedIn(true);
-          const start = new Date(todayRecord.checkIn).getTime();
-          const now = new Date().getTime();
-          setTimer(Math.floor((now - start) / 1000));
+          setHasCheckedOutToday(false);
+        } else if (todayRecord && todayRecord.checkOut) {
+          setIsCheckedIn(false);
+          setHasCheckedOutToday(true);
+          setTimer(0);
+        } else {
+          setIsCheckedIn(false);
+          setHasCheckedOutToday(false);
+          setTimer(0);
         }
         setPresentDays(history.filter(r => r.status === 'PRESENT').length);
+      } else {
+        setIsCheckedIn(false);
+        setHasCheckedOutToday(false);
+        setTimer(0);
       }
 
       const leaveStats = await leaveService.getStats(userId);
@@ -119,17 +171,39 @@ const DashboardScreen = ({ navigation }) => {
     }
   };
 
+
   const handleCheckIn = async () => {
     try {
+      let locationStr = 'Remote Office';
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const lastLoc = await Location.getLastKnownPositionAsync();
+          if (lastLoc) {
+            locationStr = `${lastLoc.coords.latitude}, ${lastLoc.coords.longitude}`;
+          } else {
+            const locPromise = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 2000));
+            const loc = await Promise.race([locPromise, timeoutPromise]);
+            if (loc) {
+              locationStr = `${loc.coords.latitude}, ${loc.coords.longitude}`;
+            }
+          }
+        }
+      } catch (locErr) {
+        console.warn('Error fetching device location:', locErr);
+      }
+
       if (!isCheckedIn) {
-        await attendanceService.checkIn(userData.id, 'Remote Office');
+        await attendanceService.checkIn(userData.id, locationStr);
         setIsCheckedIn(true);
-        setTimer(0);
+        await syncWithBackend(userData.id);
       } else {
-        await attendanceService.checkOut(userData.id);
+        await attendanceService.checkOut(userData.id, locationStr);
         setIsCheckedIn(false);
         setIsOnBreak(false);
         setTimer(0);
+        await syncWithBackend(userData.id);
       }
     } catch (e) {
       Alert.alert('Error', 'Attendance action failed');
@@ -222,12 +296,15 @@ const DashboardScreen = ({ navigation }) => {
                   <Text style={styles.timerText}>{formatTime(timer)}</Text>
                 </View>
                 <TouchableOpacity 
-                  style={[styles.actionBtn, { backgroundColor: isCheckedIn ? '#FFFFFF' : '#4F46E5' }]}
+                  style={[
+                    styles.actionBtn, 
+                    { backgroundColor: isCheckedIn ? '#FFFFFF' : (hasCheckedOutToday ? '#10B981' : '#4F46E5') }
+                  ]}
                   onPress={handleCheckIn}
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.actionBtnText, { color: isCheckedIn ? '#4F46E5' : '#FFFFFF' }]}>
-                    {isCheckedIn ? 'Check-Out' : 'Check-In'}
+                    {isCheckedIn ? 'Check-Out' : (hasCheckedOutToday ? 'Resume Check-In' : 'Check-In')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -279,7 +356,7 @@ const DashboardScreen = ({ navigation }) => {
           <View style={styles.quickGrid}>
             <QuickAction icon={Calendar} label="Leaves" color="#4F46E5" onPress={() => navigation.navigate('Leaves')} />
             <QuickAction icon={Briefcase} label="Directory" color="#10B981" onPress={() => navigation.navigate('Directory')} />
-            <QuickAction icon={Clock} label="History" color="#F59E0B" onPress={() => navigation.navigate('Activity')} />
+            <QuickAction icon={Clock} label="History" color="#F59E0B" onPress={() => navigation.navigate('Attendance')} />
             <QuickAction icon={CreditCard} label="Billing" color="#8B5CF6" onPress={() => navigation.navigate('Subscription')} />
           </View>
         </View>
@@ -288,7 +365,7 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Activity')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Attendance')}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>

@@ -1,11 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const tenantMiddleware = require('../middleware/tenant');
+const saasController = require('../controllers/saas/saas.controller');
 
-// This would handle Razorpay subscription creation, etc.
-// For now, placeholders for Org Admins to manage their own billing
+// Razorpay webhook is public
+router.post('/webhook', saasController.handleWebhook);
 
+// All subsequent routes require a valid tenant token
 router.use(tenantMiddleware);
+
+router.get('/plans', saasController.getAvailablePlans);
+router.post('/checkout', saasController.createCheckoutSession);
+router.post('/upgrade', saasController.upgradeSubscription);
 
 router.get('/subscription', (req, res) => {
   res.json({

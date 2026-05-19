@@ -74,6 +74,32 @@ const LocationDisplay = ({ location, colors }) => {
   );
 };
 
+const parseSafeDate = (dateStr) => {
+  if (!dateStr) return null;
+  if (dateStr instanceof Date) return dateStr;
+  
+  // Try standard parsing
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    if (year >= 1900 && year <= 2100) {
+      return d;
+    }
+  }
+  
+  // Try regex parsing for YYYY-MM-DD
+  const match = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1;
+    const day = parseInt(match[3], 10);
+    const parsed = new Date(year, month, day);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  
+  return null;
+};
+
 const AttendanceScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors, isDarkMode);
@@ -107,14 +133,35 @@ const AttendanceScreen = ({ navigation, route }) => {
       
       const mappedData = {};
       history.forEach(record => {
-        const recDate = new Date(record.date);
-        const dateKey = recDate.toISOString().split('T')[0];
+        const rawDate = record.date || record.checkIn || record.createdAt;
+        if (!rawDate) return;
+        
+        const recDate = parseSafeDate(rawDate);
+        if (!recDate) return;
+
+        let dateKey;
+        try {
+          dateKey = recDate.toISOString().split('T')[0];
+        } catch (isoErr) {
+          console.warn('Failed to convert rawDate to ISO string:', rawDate, isoErr);
+          return;
+        }
+        
+        const safeLocalTime = (dateStr) => {
+          const d = parseSafeDate(dateStr);
+          if (!d) return '-';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        };
+
+        const [checkInLoc, checkOutLoc] = (record.location || 'Office').split(' | ');
+
         mappedData[dateKey] = {
           status: record.status,
           month: recDate.getMonth(),
-          checkIn: record.checkIn ? new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-          checkOut: record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
-          location: record.location || 'Office'
+          checkIn: safeLocalTime(record.checkIn),
+          checkOut: safeLocalTime(record.checkOut),
+          location: checkInLoc || 'Office',
+          checkOutLocation: checkOutLoc || record.checkOutLocation || null
         };
       });
       
@@ -288,7 +335,12 @@ const AttendanceScreen = ({ navigation, route }) => {
             <View style={styles.detailsHeader}>
               <Text style={styles.detailsTitle}>Day Activity</Text>
               <View style={styles.dateBadge}>
-                <Text style={styles.dateBadgeText}>{new Date(selectedDate).toDateString()}</Text>
+                <Text style={styles.dateBadgeText}>
+                  {(() => {
+                    const d = parseSafeDate(selectedDate);
+                    return d ? d.toDateString() : '-';
+                  })()}
+                </Text>
               </View>
             </View>
 
@@ -345,10 +397,22 @@ const AttendanceScreen = ({ navigation, route }) => {
                     <MapPin size={16} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.infoLabel}>RECORDED LOCATION</Text>
+                    <Text style={styles.infoLabel}>CHECK-IN LOCATION</Text>
                     <LocationDisplay location={selectedData.location} colors={colors} />
                   </View>
                 </View>
+
+                {selectedData.checkOutLocation ? (
+                  <View style={[styles.locationBox, { marginTop: 12 }]}>
+                    <View style={styles.infoIconBox}>
+                      <MapPin size={16} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.infoLabel}>CHECK-OUT LOCATION</Text>
+                      <LocationDisplay location={selectedData.checkOutLocation} colors={colors} />
+                    </View>
+                  </View>
+                ) : null}
               </View>
             )}
           </>

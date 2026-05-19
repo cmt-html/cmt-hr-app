@@ -1,26 +1,23 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import logoXml from '../assets/cloudmojo-logo-xml';
 
-const VIEW_W = 122;
-const VIEW_H = 22;
-
 /**
- * Official CloudMojo wordmark. Icon colors match brand SVG; wordmark uses `wordmarkColor`.
+ * CMT overlapping-circles cloud logo — used in Login, Profile, and nav headers.
+ * Square aspect ratio (1:1). Pass `size` to control both width and height.
  */
 export default function CloudMojoLogo({
-  width = 200,
-  wordmarkColor = '#231F20',
+  size = 48,
   style,
   accessibilityLabel = 'CloudMojo',
 }) {
-  const height = (width * VIEW_H) / VIEW_W;
-  const xml = useMemo(() => logoXml.replace(/#231F20/g, wordmarkColor), [wordmarkColor]);
-
   return (
-    <View style={[{ alignItems: 'center', justifyContent: 'center' }, style]} accessibilityLabel={accessibilityLabel}>
-      <SvgXml xml={xml} width={width} height={height} />
+    <View
+      style={[{ alignItems: 'center', justifyContent: 'center' }, style]}
+      accessibilityLabel={accessibilityLabel}
+    >
+      <SvgXml xml={logoXml} width={size} height={size} />
     </View>
   );
 }

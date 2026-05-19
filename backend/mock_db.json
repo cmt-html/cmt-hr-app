@@ -7,33 +7,27 @@
       "email": "contact@cloudmojo.tech",
       "status": "APPROVED",
       "subscription": {
+        "planId": "3",
         "status": "ACTIVE",
-        "planId": "3"
+        "updatedAt": "2026-05-19T06:31:37.023Z",
+        "billingCycleStart": "2026-05-19T06:31:37.023Z",
+        "billingCycleEnd": "2026-06-18T06:31:37.023Z"
       },
-      "createdAt": "2026-05-13T11:43:00Z"
+      "createdAt": "2026-05-13T11:43:00.000Z"
     },
     {
-      "name": "cmtt",
-      "slug": "cmtt",
-      "email": "admin@cmtt.com",
+      "id": "org_2",
+      "name": "Free Startup Co",
+      "slug": "startup",
+      "email": "contact@startup.com",
       "status": "APPROVED",
       "subscription": {
-        "status": "TRIAL"
+        "status": "ACTIVE",
+        "planId": "1",
+        "billingCycleStart": "2026-05-18T00:00:00.000Z",
+        "billingCycleEnd": "2026-06-18T00:00:00.000Z"
       },
-      "id": "1778750201409",
-      "createdAt": "2026-05-14T09:16:41.409Z"
-    },
-    {
-      "name": "Hero",
-      "slug": "hero",
-      "email": "imran@hero.com",
-      "status": "APPROVED",
-      "subscription": {
-        "status": "TRIAL",
-        "trialEndsAt": "2026-05-28T09:56:24.308Z"
-      },
-      "id": "1778752584308",
-      "createdAt": "2026-05-14T09:56:24.308Z"
+      "createdAt": "2026-05-14T09:00:00.000Z"
     }
   ],
   "users": [
@@ -45,7 +39,12 @@
       "firstName": "Admin",
       "lastName": "User",
       "role": "ORG_ADMIN",
-      "createdAt": "2026-05-13T11:43:00Z"
+      "designation": "System Administrator",
+      "department": "Management",
+      "employeeId": "CMT-001",
+      "dateOfJoining": "2022-01-01T00:00:00.000Z",
+      "salary": 150000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
     },
     {
       "id": "user_hr",
@@ -53,29 +52,299 @@
       "email": "jane.hr@cloudmojo.tech",
       "password": "password123",
       "firstName": "Jane",
-      "lastName": "HR",
+      "lastName": "Smith",
       "role": "HR",
-      "createdAt": "2026-05-13T11:43:00Z"
+      "designation": "HR Lead",
+      "department": "Human Resources",
+      "employeeId": "CMT-002",
+      "dateOfJoining": "2023-11-01T00:00:00.000Z",
+      "salary": 80000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
     },
     {
-      "id": "user_manager",
+      "id": "user_manager1",
       "organizationId": "org_1",
       "email": "sarah.manager@cloudmojo.tech",
       "password": "password123",
       "firstName": "Sarah",
-      "lastName": "Manager",
+      "lastName": "Conner",
       "role": "MANAGER",
-      "createdAt": "2026-05-13T11:43:00Z"
+      "designation": "Engineering Manager",
+      "department": "Technology",
+      "employeeId": "CMT-003",
+      "dateOfJoining": "2023-01-15T00:00:00.000Z",
+      "salary": 120000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
     },
     {
-      "id": "user_employee",
+      "id": "user_manager2",
       "organizationId": "org_1",
+      "email": "michael.manager@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Michael",
+      "lastName": "Scott",
+      "role": "MANAGER",
+      "designation": "Sales Manager",
+      "department": "Sales",
+      "employeeId": "CMT-004",
+      "dateOfJoining": "2023-03-01T00:00:00.000Z",
+      "salary": 95000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee1",
+      "organizationId": "org_1",
+      "managerId": "user_manager1",
       "email": "john.dev@cloudmojo.tech",
       "password": "password123",
       "firstName": "John",
-      "lastName": "Employee",
+      "lastName": "Doe",
       "role": "EMPLOYEE",
-      "createdAt": "2026-05-13T11:43:00Z"
+      "designation": "Senior Developer",
+      "department": "Technology",
+      "employeeId": "CMT-101",
+      "dateOfJoining": "2024-01-15T00:00:00.000Z",
+      "salary": 85000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee2",
+      "organizationId": "org_1",
+      "managerId": "user_manager1",
+      "email": "david.dev@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "David",
+      "lastName": "Miller",
+      "role": "EMPLOYEE",
+      "designation": "Frontend Engineer",
+      "department": "Technology",
+      "employeeId": "CMT-102",
+      "dateOfJoining": "2024-05-10T00:00:00.000Z",
+      "salary": 70000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee3",
+      "organizationId": "org_1",
+      "managerId": "user_manager1",
+      "email": "emily.qa@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Emily",
+      "lastName": "Watson",
+      "role": "EMPLOYEE",
+      "designation": "QA Analyst",
+      "department": "Technology",
+      "employeeId": "CMT-103",
+      "dateOfJoining": "2024-06-01T00:00:00.000Z",
+      "salary": 65000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee4",
+      "organizationId": "org_1",
+      "managerId": "user_manager2",
+      "email": "dwight.sales@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Dwight",
+      "lastName": "Schrute",
+      "role": "EMPLOYEE",
+      "designation": "Assistant to the Regional Manager",
+      "department": "Sales",
+      "employeeId": "CMT-104",
+      "dateOfJoining": "2023-04-01T00:00:00.000Z",
+      "salary": 60000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee5",
+      "organizationId": "org_1",
+      "managerId": "user_manager2",
+      "email": "jim.sales@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Jim",
+      "lastName": "Halpert",
+      "role": "EMPLOYEE",
+      "designation": "Senior Sales Executive",
+      "department": "Sales",
+      "employeeId": "CMT-105",
+      "dateOfJoining": "2023-05-01T00:00:00.000Z",
+      "salary": 75000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee_6",
+      "organizationId": "org_1",
+      "managerId": "user_manager1",
+      "email": "robert.dev@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Robert",
+      "lastName": "Downey",
+      "role": "EMPLOYEE",
+      "designation": "Senior Devops Engineer",
+      "department": "Technology",
+      "employeeId": "CMT-106",
+      "dateOfJoining": "2024-02-15T00:00:00.000Z",
+      "salary": 95000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee_7",
+      "organizationId": "org_1",
+      "managerId": "user_manager1",
+      "email": "scarlett.dev@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Scarlett",
+      "lastName": "Johansson",
+      "role": "EMPLOYEE",
+      "designation": "Staff UX Researcher",
+      "department": "Technology",
+      "employeeId": "CMT-107",
+      "dateOfJoining": "2024-03-20T00:00:00.000Z",
+      "salary": 110000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee_8",
+      "organizationId": "org_1",
+      "managerId": "user_manager1",
+      "email": "chris.dev@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Chris",
+      "lastName": "Evans",
+      "role": "EMPLOYEE",
+      "designation": "Lead Security Engineer",
+      "department": "Technology",
+      "employeeId": "CMT-108",
+      "dateOfJoining": "2024-04-10T00:00:00.000Z",
+      "salary": 105000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee_9",
+      "organizationId": "org_1",
+      "managerId": "user_manager1",
+      "email": "mark.dev@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Mark",
+      "lastName": "Ruffalo",
+      "role": "EMPLOYEE",
+      "designation": "Infrastructure Engineer",
+      "department": "Technology",
+      "employeeId": "CMT-109",
+      "dateOfJoining": "2024-05-05T00:00:00.000Z",
+      "salary": 98000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee_10",
+      "organizationId": "org_1",
+      "managerId": "user_manager2",
+      "email": "jeremy.dev@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Jeremy",
+      "lastName": "Renner",
+      "role": "EMPLOYEE",
+      "designation": "Sales Representative",
+      "department": "Sales",
+      "employeeId": "CMT-110",
+      "dateOfJoining": "2024-06-01T00:00:00.000Z",
+      "salary": 58000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "user_employee_11",
+      "organizationId": "org_1",
+      "managerId": "user_manager2",
+      "email": "elizabeth.dev@cloudmojo.tech",
+      "password": "password123",
+      "firstName": "Elizabeth",
+      "lastName": "Olsen",
+      "role": "EMPLOYEE",
+      "designation": "Client Success Manager",
+      "department": "Sales",
+      "employeeId": "CMT-111",
+      "dateOfJoining": "2024-07-01T00:00:00.000Z",
+      "salary": 62000,
+      "createdAt": "2026-05-13T11:43:00.000Z"
+    },
+    {
+      "id": "org2_admin",
+      "organizationId": "org_2",
+      "email": "admin@org2.com",
+      "password": "password123",
+      "firstName": "Alice",
+      "lastName": "Green",
+      "role": "ORG_ADMIN",
+      "designation": "Founder & CEO",
+      "department": "Management",
+      "employeeId": "ORG2-001",
+      "dateOfJoining": "2025-01-01T00:00:00.000Z",
+      "salary": 100000,
+      "createdAt": "2026-05-14T09:00:00.000Z"
+    },
+    {
+      "id": "org2_emp1",
+      "organizationId": "org_2",
+      "managerId": "org2_admin",
+      "email": "emp1@org2.com",
+      "password": "password123",
+      "firstName": "Bob",
+      "lastName": "Brown",
+      "role": "EMPLOYEE",
+      "designation": "Developer",
+      "department": "Technology",
+      "employeeId": "ORG2-101",
+      "dateOfJoining": "2025-02-01T00:00:00.000Z",
+      "salary": 50000,
+      "createdAt": "2026-05-14T09:00:00.000Z"
+    },
+    {
+      "id": "org2_emp2",
+      "organizationId": "org_2",
+      "managerId": "org2_admin",
+      "email": "emp2@org2.com",
+      "password": "password123",
+      "firstName": "Charlie",
+      "lastName": "White",
+      "role": "EMPLOYEE",
+      "designation": "Designer",
+      "department": "Technology",
+      "employeeId": "ORG2-102",
+      "dateOfJoining": "2025-03-01T00:00:00.000Z",
+      "salary": 48000,
+      "createdAt": "2026-05-14T09:00:00.000Z"
+    },
+    {
+      "id": "org2_emp3",
+      "organizationId": "org_2",
+      "managerId": "org2_admin",
+      "email": "emp3@org2.com",
+      "password": "password123",
+      "firstName": "Daisy",
+      "lastName": "Black",
+      "role": "EMPLOYEE",
+      "designation": "Marketing Executive",
+      "department": "Marketing",
+      "employeeId": "ORG2-103",
+      "dateOfJoining": "2025-04-01T00:00:00.000Z",
+      "salary": 42000,
+      "createdAt": "2026-05-14T09:00:00.000Z"
+    },
+    {
+      "id": "org2_emp4",
+      "organizationId": "org_2",
+      "managerId": "org2_admin",
+      "email": "emp4@org2.com",
+      "password": "password123",
+      "firstName": "Ethan",
+      "lastName": "Grey",
+      "role": "EMPLOYEE",
+      "designation": "Support Engineer",
+      "department": "Support",
+      "employeeId": "ORG2-104",
+      "dateOfJoining": "2025-05-01T00:00:00.000Z",
+      "salary": 38000,
+      "createdAt": "2026-05-14T09:00:00.000Z"
     },
     {
       "id": "user_super",
@@ -84,117 +353,395 @@
       "firstName": "Super",
       "lastName": "Admin",
       "role": "SUPER_ADMIN",
-      "createdAt": "2026-05-13T11:43:00Z"
-    },
-    {
-      "organizationId": "1778750201409",
-      "email": "admin@cmtt.com",
-      "password": "1234",
-      "firstName": "Im",
-      "lastName": "Khan",
-      "role": "ORG_ADMIN",
-      "id": "1778750201410",
-      "createdAt": "2026-05-14T09:16:41.410Z"
-    },
-    {
-      "organizationId": "1778752584308",
-      "email": "imran@hero.com",
-      "password": "1234",
-      "firstName": "Imran",
-      "lastName": "Khan",
-      "role": "ORG_ADMIN",
-      "id": "1778752584309",
-      "createdAt": "2026-05-14T09:56:24.309Z"
+      "createdAt": "2026-05-13T11:43:00.000Z"
     }
   ],
-  "attendances": [
-    {
-      "userId": "user_admin",
-      "organizationId": "org_1",
-      "checkIn": "2026-05-14T09:54:21.495Z",
-      "location": "Remote Office",
-      "status": "PRESENT",
-      "checkOut": "2026-05-14T09:54:37.625Z",
-      "id": "1778752461495",
-      "createdAt": "2026-05-14T09:54:21.495Z"
-    },
-    {
-      "userId": "user_admin",
-      "organizationId": "org_1",
-      "checkIn": "2026-05-14T09:54:47.202Z",
-      "location": "Remote Office",
-      "status": "PRESENT",
-      "checkOut": null,
-      "id": "1778752487202",
-      "createdAt": "2026-05-14T09:54:47.202Z"
-    },
-    {
-      "userId": "1778752584309",
-      "organizationId": "1778752584308",
-      "checkIn": "2026-05-14T10:47:35.864Z",
-      "location": "Remote Office",
-      "status": "PRESENT",
-      "checkOut": "2026-05-14T10:47:39.894Z",
-      "id": "1778755655864",
-      "createdAt": "2026-05-14T10:47:35.864Z"
-    },
-    {
-      "userId": "1778752584309",
-      "organizationId": "1778752584308",
-      "checkIn": "2026-05-14T10:47:40.930Z",
-      "location": "Remote Office",
-      "status": "PRESENT",
-      "checkOut": "2026-05-14T10:47:45.759Z",
-      "id": "1778755660930",
-      "createdAt": "2026-05-14T10:47:40.930Z"
-    },
-    {
-      "userId": "1778752584309",
-      "organizationId": "1778752584308",
-      "checkIn": "2026-05-14T10:47:47.390Z",
-      "location": "Remote Office",
-      "status": "PRESENT",
-      "checkOut": null,
-      "id": "1778755667390",
-      "createdAt": "2026-05-14T10:47:47.390Z"
-    }
-  ],
-  "leaves": [],
-  "configs": [],
   "plans": [
     {
       "id": "1",
-      "name": "Starter",
+      "name": "Free",
       "price": {
-        "monthly": 49
+        "monthly": 0
       },
+      "maxEmployees": 10,
+      "maxStorage": "100 MB",
       "features": [
-        "attendance"
+        "basic-hr",
+        "attendance",
+        "reviews-1"
       ]
     },
     {
       "id": "2",
       "name": "Pro",
       "price": {
-        "monthly": 99
+        "monthly": 49
       },
+      "maxEmployees": 100,
+      "maxStorage": "5 GB",
       "features": [
+        "basic-hr",
         "attendance",
-        "payroll"
+        "reviews",
+        "performance",
+        "api-access",
+        "custom-form-builder",
+        "advanced-reporting"
       ]
     },
     {
       "id": "3",
       "name": "Enterprise",
       "price": {
-        "monthly": 249
+        "monthly": "Custom"
       },
+      "maxEmployees": 999999,
+      "maxStorage": "50 GB",
       "features": [
+        "basic-hr",
         "attendance",
-        "payroll",
-        "ai-assistant"
+        "reviews",
+        "performance",
+        "api-access",
+        "custom-form-builder",
+        "advanced-reporting",
+        "sso",
+        "priority-support"
       ]
     }
   ],
-  "auditLogs": []
+  "attendances": [
+    {
+      "id": "att_1",
+      "userId": "user_employee1",
+      "organizationId": "org_1",
+      "checkIn": "2026-05-18T09:00:00.000Z",
+      "checkOut": "2026-05-18T18:00:00.000Z",
+      "location": "12.9716, 77.5946 (Office)",
+      "status": "PRESENT",
+      "date": "2026-05-18T00:00:00.000Z"
+    },
+    {
+      "id": "att_2",
+      "userId": "user_employee2",
+      "organizationId": "org_1",
+      "checkIn": "2026-05-18T09:45:00.000Z",
+      "checkOut": "2026-05-18T18:15:00.000Z",
+      "location": "Office",
+      "status": "LATE",
+      "date": "2026-05-18T00:00:00.000Z"
+    },
+    {
+      "userId": "user_manager1",
+      "organizationId": "org_1",
+      "checkIn": "2026-05-18T13:23:17.348Z",
+      "location": "Office (12.9716, 77.5946) | Office (12.9716, 77.5946)",
+      "status": "PRESENT",
+      "checkOut": "2026-05-18T13:23:19.736Z",
+      "id": "1779110597348",
+      "createdAt": "2026-05-18T13:23:17.348Z"
+    },
+    {
+      "userId": "user_hr",
+      "organizationId": "org_1",
+      "checkIn": "2026-05-19T07:16:45.193Z",
+      "location": "Office (12.9716, 77.5946) | Client Site (18.9750, 72.8258) | Office (12.9716, 77.5946) | Client Site (18.9750, 72.8258)",
+      "status": "PRESENT",
+      "checkOut": "2026-05-19T08:42:44.224Z",
+      "id": "1779175005193",
+      "createdAt": "2026-05-19T07:16:45.193Z"
+    }
+  ],
+  "leaves": [
+    {
+      "id": "leave_1",
+      "userId": "user_employee1",
+      "organizationId": "org_1",
+      "type": "SICK",
+      "startDate": "2026-05-10T00:00:00.000Z",
+      "endDate": "2026-05-11T00:00:00.000Z",
+      "reason": "Fever and flu symptoms",
+      "status": "APPROVED",
+      "appliedAt": "2026-05-09T10:00:00.000Z"
+    },
+    {
+      "id": "leave_2",
+      "userId": "user_employee2",
+      "organizationId": "org_1",
+      "type": "CASUAL",
+      "startDate": "2026-05-20T00:00:00.000Z",
+      "endDate": "2026-05-22T00:00:00.000Z",
+      "reason": "Personal family work",
+      "status": "PENDING",
+      "appliedAt": "2026-05-15T14:30:00.000Z"
+    }
+  ],
+  "configs": [
+    {
+      "id": "cfg_1",
+      "organizationId": "org_1",
+      "windowStart": "09:00 AM",
+      "windowEnd": "06:00 PM",
+      "requiredHours": 9,
+      "minPresentMinutes": 480
+    }
+  ],
+  "announcements": [
+    {
+      "id": "ann_1",
+      "title": "Updated Office Policy",
+      "content": "We have updated our hybrid work policy. Mandatory office presence is now 3 days a week starting next month. Please sync with your reporting managers.",
+      "type": "POLICY",
+      "authorName": "Jane Smith (HR)",
+      "authorId": "user_hr",
+      "organizationId": "org_1",
+      "likes": [
+        "user_employee1",
+        "user_employee2",
+        "user_manager1"
+      ],
+      "comments": [
+        {
+          "userId": "user_employee1",
+          "userName": "John Doe",
+          "comment": "Got it, thanks for the update.",
+          "createdAt": "2026-05-15T09:00:00.000Z"
+        }
+      ],
+      "createdAt": "2026-05-15T08:30:00.000Z"
+    },
+    {
+      "id": "ann_2",
+      "title": "Congratulations Team John dev!",
+      "content": "Amazing work on delivering the SaaS platform before the deadline! Everyone is invited to the lunch buffet at the Orchid Ballroom this Friday.",
+      "type": "EVENT",
+      "authorName": "Sarah Conner",
+      "authorId": "user_manager1",
+      "organizationId": "org_1",
+      "likes": [
+        "user_employee1",
+        "user_employee2",
+        "user_employee3"
+      ],
+      "comments": [],
+      "createdAt": "2026-05-16T12:00:00.000Z"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "tkt_1",
+      "title": "MacBook Pro screen glitching",
+      "description": "The bottom half of the secondary monitor shows pink stripes when plugged into the thunderbolt port.",
+      "category": "IT",
+      "priority": "HIGH",
+      "status": "OPEN",
+      "userId": "user_employee1",
+      "organizationId": "org_1",
+      "comments": [
+        {
+          "authorId": "user_hr",
+          "authorName": "Jane HR",
+          "text": "Hi John, IT support is looking into replacement cables. Standby.",
+          "createdAt": "2026-05-17T11:00:00.000Z"
+        }
+      ],
+      "createdAt": "2026-05-17T10:00:00.000Z",
+      "updatedAt": "2026-05-17T11:00:00.000Z"
+    }
+  ],
+  "goals": [
+    {
+      "id": "goal_1",
+      "userId": "user_employee1",
+      "organizationId": "org_1",
+      "title": "Redesign Core Auth Module",
+      "description": "Implement JWT refresh tokens, sanitization and MFA simulation.",
+      "targetValue": 100,
+      "currentValue": 80,
+      "unit": "%",
+      "startDate": "2026-05-01T00:00:00.000Z",
+      "endDate": "2026-05-31T00:00:00.000Z",
+      "status": "IN_PROGRESS",
+      "createdAt": "2026-05-01T09:00:00.000Z",
+      "updatedAt": "2026-05-18T10:00:00.000Z"
+    },
+    {
+      "id": "goal_2",
+      "userId": "user_employee2",
+      "organizationId": "org_1",
+      "title": "Improve Lighthouse Score",
+      "description": "Bring the landing page performance score above 90.",
+      "targetValue": 90,
+      "currentValue": 65,
+      "unit": "points",
+      "startDate": "2026-05-10T00:00:00.000Z",
+      "endDate": "2026-06-10T00:00:00.000Z",
+      "status": "PENDING",
+      "createdAt": "2026-05-10T10:00:00.000Z",
+      "updatedAt": "2026-05-10T10:00:00.000Z"
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rev_1",
+      "revieweeId": "user_employee1",
+      "reviewerId": "user_manager1",
+      "cycleName": "Q2 2026 Appraisal",
+      "rating": 4,
+      "comments": "John has shown outstanding engineering output, especially leading the SaaS migrations.",
+      "selfReview": "I accomplished all my engineering OKRs and resolved 15 support tickets.",
+      "status": "FINISHED",
+      "organizationId": "org_1",
+      "createdAt": "2026-05-15T00:00:00.000Z",
+      "updatedAt": "2026-05-17T00:00:00.000Z"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "job_1",
+      "title": "Full Stack Engineer (Node/React)",
+      "description": "Looking for a Senior Developer to take ownership of high-availability features in our core HRMS platform.",
+      "department": "Technology",
+      "requirements": "3+ years experience with React, Node Express, and Postgres.",
+      "salaryRange": "$80,000 - $110,000",
+      "status": "OPEN",
+      "organizationId": "org_1",
+      "createdAt": "2026-05-01T00:00:00.000Z",
+      "updatedAt": "2026-05-01T00:00:00.000Z"
+    }
+  ],
+  "applicants": [
+    {
+      "id": "app_1",
+      "jobId": "job_1",
+      "name": "Alan Turing",
+      "email": "alan@turingcode.org",
+      "phone": "+44 987654321",
+      "resumeUrl": "/mock/docs/alan_turing_resume.pdf",
+      "status": "HIRED",
+      "onboardingTasks": [
+        {
+          "id": "task_1",
+          "task": "Issue Laptop & Hardware credentials",
+          "status": "PENDING",
+          "assignee": "IT"
+        },
+        {
+          "id": "task_2",
+          "task": "HR Onboarding Paperwork and Offer Letter",
+          "status": "DONE",
+          "assignee": "HR"
+        },
+        {
+          "id": "task_3",
+          "task": "Allocate Workspace desk and card access",
+          "status": "PENDING",
+          "assignee": "FACILITIES"
+        }
+      ],
+      "offboardingTasks": [],
+      "organizationId": "org_1",
+      "createdAt": "2026-05-05T10:00:00.000Z",
+      "updatedAt": "2026-05-18T10:00:00.000Z"
+    },
+    {
+      "jobId": "job_1",
+      "name": "Kevin Malone",
+      "email": "kevin.malone@cloudmojo.tech",
+      "phone": "123-456-7890",
+      "resumeUrl": "/mock/resumes/resume.pdf",
+      "status": "HIRED",
+      "onboardingTasks": [
+        {
+          "id": "t1",
+          "task": "Issue Laptop & Hardware credentials",
+          "status": "PENDING",
+          "assignee": "IT"
+        },
+        {
+          "id": "t2",
+          "task": "HR Paperwork & Signature",
+          "status": "PENDING",
+          "assignee": "HR"
+        },
+        {
+          "id": "t3",
+          "task": "Desk & Security ID Access Card allocation",
+          "status": "PENDING",
+          "assignee": "FACILITIES"
+        }
+      ],
+      "offboardingTasks": [
+        {
+          "id": "o1",
+          "task": "Revoke Email & SaaS accesses",
+          "status": "PENDING",
+          "assignee": "IT"
+        },
+        {
+          "id": "o2",
+          "task": "Conduct Exit Interview Form",
+          "status": "PENDING",
+          "assignee": "HR"
+        },
+        {
+          "id": "o3",
+          "task": "Handover Asset & Office Keycards",
+          "status": "PENDING",
+          "assignee": "FACILITIES"
+        }
+      ],
+      "organizationId": "org_1",
+      "id": "1779172023783",
+      "createdAt": "2026-05-19T06:27:03.784Z"
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc_1",
+      "name": "John_Doe_Offer_Letter.pdf",
+      "url": "/mock/docs/john_doe_offer_letter.pdf",
+      "type": "OFFER_LETTER",
+      "userId": "user_employee1",
+      "organizationId": "org_1",
+      "createdAt": "2024-01-15T09:00:00.000Z"
+    }
+  ],
+  "timesheets": [
+    {
+      "id": "ts_1",
+      "userId": "user_employee1",
+      "project": "CMT SaaS Mobile App",
+      "date": "2026-05-18T00:00:00.000Z",
+      "hoursLogged": 7.5,
+      "description": "Implemented the executive dashboard frontend components and adjusted HSL color palette.",
+      "status": "APPROVED",
+      "organizationId": "org_1",
+      "createdAt": "2026-05-18T17:30:00.000Z"
+    }
+  ],
+  "customFields": [
+    {
+      "id": "cf_1",
+      "fieldName": "tShirtSize",
+      "fieldLabel": "T-Shirt Size",
+      "fieldType": "SELECT",
+      "options": "S,M,L,XL,XXL",
+      "isRequired": false,
+      "organizationId": "org_1",
+      "createdAt": "2026-05-14T09:00:00.000Z"
+    },
+    {
+      "fieldName": "test_field",
+      "fieldLabel": "Test Field",
+      "fieldType": "TEXT",
+      "options": "",
+      "isRequired": false,
+      "organizationId": "org_1",
+      "id": "1779171629242",
+      "createdAt": "2026-05-19T06:20:29.242Z"
+    }
+  ],
+  "auditLogs": [],
+  "invitations": []
 }

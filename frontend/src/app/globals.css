@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: var(--font-outfit), var(--font-inter), 'Outfit', 'Inter', system-ui, sans-serif;
+  }
+
+  /* ── Light mode: inputs, selects, textareas ── */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    color: #1e293b; /* slate-800 */
+    background-color: #f8fafc; /* slate-50 */
+  }
+
+  /* ── Light mode: sub-panel cards (bg-slate-50 inside cards) ── */
+  :not(.dark) .bg-slate-50 {
+    background-color: #f8fafc;
+  }
+
+  /* ── Ensure sidebar always stays dark regardless of theme ── */
+  aside {
+    background-color: #0f172a !important; /* slate-900 */
+    border-color: #1e293b !important;     /* slate-800 */
+  }
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Glassmorphism Panels */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Premium Card hover scale */
+.hover-premium {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.15);
+}
+
+/* Keyframe Animations */
+@keyframes fade-slide-up {
+  0% { transform: translateY(12px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-in {
+  animation: fade-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Light mode: ensure dark-hardcoded text colors are visible ── */
+/* text-slate-850 maps to a very dark color — fine in light mode */
+/* text-slate-650 = #404f66 — dark enough to be visible on white */
+
+/* Light mode recharts tooltip */
+html:not(.dark) .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  border-radius: 10px !important;
+}
+
+/* Light mode: sidebar nav items text visibility */
+html:not(.dark) aside a {
+  color: #94a3b8; /* slate-400 */
+}
+html:not(.dark) aside a:hover {
+  color: #f1f5f9; /* slate-100 */
+}

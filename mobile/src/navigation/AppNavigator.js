@@ -13,6 +13,7 @@ import LoginScreen from '../screens/LoginScreen';
 import AttendanceScreen from '../screens/AttendanceScreen';
 import LeavesScreen from '../screens/LeavesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import FeedsScreen from '../screens/FeedsScreen';
 import ApplyLeaveScreen from '../screens/ApplyLeaveScreen';
 import LeaveDetailsScreen from '../screens/LeaveDetailsScreen';
 import DirectoryScreen from '../screens/DirectoryScreen';
@@ -46,7 +47,7 @@ const MainTabs = () => {
       />
       <Tab.Screen 
         name="Feeds" 
-        component={DashboardScreen} // Placeholder
+        component={FeedsScreen}
         options={{ tabBarIcon: ({ color }) => <Rss color={color} size={24} /> }}
       />
       <Tab.Screen 

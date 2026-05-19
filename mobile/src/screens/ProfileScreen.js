@@ -286,7 +286,7 @@ const ProfileScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <CloudMojoLogo width={120} wordmarkColor={colors.textLight} />
+            <CloudMojoLogo size={56} />
             <Text style={styles.version}>v1.2.4</Text>
           </View>
         </View>

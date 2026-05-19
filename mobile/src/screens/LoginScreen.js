@@ -78,7 +78,7 @@ const LoginScreen = ({ navigation }) => {
           >
             <View style={styles.hero}>
               <View style={styles.logoWrap}>
-                <CloudMojoLogo width={LOGO_W} wordmarkColor={colors.authWordmark} />
+                <CloudMojoLogo size={LOGO_W * 0.4} />
               </View>
 
               <View style={styles.pillRow}>
