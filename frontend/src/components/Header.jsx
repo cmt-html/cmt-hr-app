@@ -60,7 +60,14 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
           <input 
             type="text" 
             placeholder="Search employees, goals, tickets..." 
-            className="bg-transparent border-none text-[13px] outline-none text-slate-700 w-full dark:text-slate-200"
+            className="bg-transparent border-none text-[13px] outline-none w-full placeholder-slate-450 dark:placeholder-slate-400"
+            style={{ 
+              backgroundColor: 'transparent', 
+              border: 'none', 
+              outline: 'none', 
+              boxShadow: 'none',
+              color: isDark ? '#e2e8f0' : '#334155'
+            }}
           />
         </div>
       </div>

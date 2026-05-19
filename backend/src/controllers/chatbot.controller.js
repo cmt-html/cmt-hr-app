@@ -1,5 +1,5 @@
-const mockDb = require('../services/mock.service');
-const prisma = require('../services/prisma.service');
+const { Leave, WorkingConfig } = require('../services/db.service');
+const mongoose = require('mongoose');
 
 const HOLIDAY_CALENDAR = [
   { date: '2026-01-01', name: 'New Year Day', type: 'NATIONAL' },
@@ -31,8 +31,12 @@ exports.askChatbot = async (req, res) => {
 
     // 1. Fetch employee leave balance if requested
     if (text.includes('leave') || text.includes('balance') || text.includes('vacation') || text.includes('sick')) {
-      const leaves = mockDb.find('leaves', { userId, status: 'APPROVED' }) || [];
-      
+      const activeUserId = userId || req.user?.userId;
+      let leaves = [];
+      if (activeUserId && mongoose.isValidObjectId(activeUserId)) {
+        leaves = await Leave.find({ userId: activeUserId, status: 'APPROVED' }).lean();
+      }
+
       // Assume standard yearly leaves: Sick = 10, Casual = 12, Annual = 15
       let sickUsed = 0;
       let casualUsed = 0;
@@ -76,7 +80,7 @@ exports.askChatbot = async (req, res) => {
 
     // 3. Fetch working hours / policy rules
     if (text.includes('hours') || text.includes('timing') || text.includes('shift') || text.includes('work')) {
-      const config = mockDb.findOne('configs', { organizationId }) || {
+      const config = await WorkingConfig.findOne({ organizationId }).lean() || {
         windowStart: '09:00 AM',
         windowEnd: '06:00 PM',
         requiredHours: 9

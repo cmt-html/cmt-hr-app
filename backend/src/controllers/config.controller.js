@@ -1,41 +1,23 @@
-const prisma = require('../services/prisma.service');
-const mockDb = require('../services/mock.service');
+const { WorkingConfig } = require('../services/db.service');
 
 exports.getConfig = async (req, res) => {
   try {
     const organizationId = req.organizationId;
     
-    // --- PRISMA/POSTGRES MODE ---
-    try {
-      let config = await prisma.workingConfig.findUnique({ where: { organizationId } });
-      if (!config) {
-         config = await prisma.workingConfig.create({
-           data: {
-             organizationId,
-             windowStart: '09:00 AM',
-             windowEnd: '06:00 PM',
-             requiredHours: 9,
-             minPresentMinutes: 500
-           }
-         });
-      }
-      return res.json(config);
-    } catch (dbError) {
-      console.warn('⚠️ Config Postgres Error, using Mock:', dbError.message);
-    }
-
-    // --- MOCK MODE FALLBACK ---
-    let config = mockDb.findOne('configs', { organizationId });
+    let config = await WorkingConfig.findOne({ organizationId }).lean();
     if (!config) {
-      config = mockDb.create('configs', {
+      config = new WorkingConfig({
         organizationId,
         windowStart: '09:00 AM',
         windowEnd: '06:00 PM',
         requiredHours: 9,
         minPresentMinutes: 500
       });
+      await config.save();
+      config = config.toObject();
     }
-    res.json(config);
+    
+    res.json({ ...config, id: config._id.toString() });
   } catch (error) {
     res.status(500).json({ message: 'Config fetch failed', error: error.message });
   }
@@ -46,21 +28,13 @@ exports.updateConfig = async (req, res) => {
     const { windowStart, windowEnd, requiredHours, minPresentMinutes } = req.body;
     const organizationId = req.organizationId;
 
-    // --- PRISMA/POSTGRES MODE ---
-    try {
-      const config = await prisma.workingConfig.upsert({
-        where: { organizationId },
-        update: { windowStart, windowEnd, requiredHours, minPresentMinutes },
-        create: { organizationId, windowStart, windowEnd, requiredHours, minPresentMinutes }
-      });
-      return res.json({ message: 'Config updated (Postgres)', config });
-    } catch (dbError) {
-      console.warn('⚠️ Config Postgres Error, using Mock:', dbError.message);
-    }
+    const config = await WorkingConfig.findOneAndUpdate(
+      { organizationId },
+      { $set: { windowStart, windowEnd, requiredHours, minPresentMinutes } },
+      { new: true, upsert: true }
+    ).lean();
 
-    // --- MOCK MODE FALLBACK ---
-    const config = mockDb.update('configs', organizationId, { windowStart, windowEnd, requiredHours, minPresentMinutes });
-    res.json({ message: 'Config updated (Mock)', config });
+    res.json({ message: 'Config updated successfully', config: { ...config, id: config._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Update failed', error: error.message });
   }

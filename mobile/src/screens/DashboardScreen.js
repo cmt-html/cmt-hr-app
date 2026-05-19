@@ -105,6 +105,17 @@ const DashboardScreen = ({ navigation }) => {
     return () => clearInterval(interval);
   }, [isCheckedIn, isOnBreak]);
 
+  // Real-time synchronization polling (syncs status with web app every 5 seconds)
+  useEffect(() => {
+    let pollInterval = null;
+    if (userData?.id) {
+      pollInterval = setInterval(() => {
+        syncWithBackend(userData.id);
+      }, 5000);
+    }
+    return () => clearInterval(pollInterval);
+  }, [userData?.id]);
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -151,7 +162,20 @@ const DashboardScreen = ({ navigation }) => {
         } else if (todayRecord && todayRecord.checkOut) {
           setIsCheckedIn(false);
           setHasCheckedOutToday(true);
-          setTimer(0);
+          
+          const checkOutTime = parseSafeDate(todayRecord.checkOut);
+          const checkInTime = parseSafeDate(todayRecord.checkIn);
+          if (checkOutTime && checkInTime) {
+            const timeSinceCheckOut = Math.floor((new Date().getTime() - checkOutTime.getTime()) / 1000);
+            if (timeSinceCheckOut < 7200) {
+              const elapsedSeconds = Math.floor((checkOutTime.getTime() - checkInTime.getTime()) / 1000);
+              setTimer(elapsedSeconds);
+            } else {
+              setTimer(0);
+            }
+          } else {
+            setTimer(0);
+          }
         } else {
           setIsCheckedIn(false);
           setHasCheckedOutToday(false);
@@ -199,14 +223,30 @@ const DashboardScreen = ({ navigation }) => {
         setIsCheckedIn(true);
         await syncWithBackend(userData.id);
       } else {
-        await attendanceService.checkOut(userData.id, locationStr);
+        const res = await attendanceService.checkOut(userData.id, locationStr);
         setIsCheckedIn(false);
         setIsOnBreak(false);
-        setTimer(0);
+        
+        if (res?.attendance?.checkIn && res?.attendance?.checkOut) {
+          const checkInTime = parseSafeDate(res.attendance.checkIn);
+          const checkOutTime = parseSafeDate(res.attendance.checkOut);
+          if (checkInTime && checkOutTime) {
+            const elapsed = Math.floor((checkOutTime.getTime() - checkInTime.getTime()) / 1000);
+            setTimer(elapsed);
+          }
+        } else {
+          setTimer(0);
+        }
+        
         await syncWithBackend(userData.id);
       }
     } catch (e) {
-      Alert.alert('Error', 'Attendance action failed');
+      const errMsg = e.response?.data?.message || '';
+      if (errMsg.includes('No active check-in session') || errMsg.includes('already exists')) {
+        await syncWithBackend(userData.id);
+      } else {
+        Alert.alert('Attendance Sync', errMsg || 'Attendance action failed');
+      }
     }
   };
 

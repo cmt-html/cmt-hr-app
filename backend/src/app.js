@@ -17,4 +17,14 @@ app.get('/', (req, res) => {
 const apiRoutes = require('./routes/api.routes');
 app.use('/api', apiRoutes);
 
+// Global Error Handler Middleware
+app.use((err, req, res, next) => {
+  console.error('💥 Uncaught Express Error:', err);
+  res.status(500).json({
+    message: 'Internal Server Error',
+    error: err.message,
+    stack: err.stack
+  });
+});
+
 module.exports = app;

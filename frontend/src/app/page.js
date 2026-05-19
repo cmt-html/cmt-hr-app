@@ -26,6 +26,7 @@ const Dashboard = () => {
   const [activeSession, setActiveSession] = useState(null);
   const [gpsPreset, setGpsPreset] = useState('Office (12.9716, 77.5946)');
   const [duration, setDuration] = useState('00:00:00');
+  const [recentCheckout, setRecentCheckout] = useState(null);
   
   // Metrics & State
   const [stats, setStats] = useState({ employees: 0, pendingLeaves: 0, openTickets: 0, openJobs: 0 });
@@ -76,13 +77,37 @@ const Dashboard = () => {
       // Check current user attendance status
       if (user) {
         const attHistoryRes = await api.attendance.getHistory(user.id);
-        const todaySession = (attHistoryRes.data || []).find(s => s.checkOut === null);
+        const sessions = attHistoryRes.data || [];
+        const todaySession = sessions.find(s => s.checkOut === null);
         if (todaySession) {
           setIsClockedIn(true);
           setActiveSession(todaySession);
+          setRecentCheckout(null);
         } else {
           setIsClockedIn(false);
           setActiveSession(null);
+          
+          const lastSession = sessions.find(s => s.checkOut !== null);
+          if (lastSession) {
+            const checkOutTime = new Date(lastSession.checkOut);
+            const timeSinceCheckOut = Math.abs(new Date() - checkOutTime);
+            if (timeSinceCheckOut < 2 * 60 * 60 * 1000) {
+              const checkInTime = new Date(lastSession.checkIn);
+              const sessionDuration = Math.abs(checkOutTime - checkInTime);
+              const hrs = Math.floor(sessionDuration / (1000 * 60 * 60)).toString().padStart(2, '0');
+              const mins = Math.floor((sessionDuration % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+              const secs = Math.floor((sessionDuration % (1000 * 60)) / 1000).toString().padStart(2, '0');
+              
+              setRecentCheckout({
+                duration: `${hrs}:${mins}:${secs}`,
+                checkOutTime
+              });
+            } else {
+              setRecentCheckout(null);
+            }
+          } else {
+            setRecentCheckout(null);
+          }
         }
       }
 
@@ -99,6 +124,17 @@ const Dashboard = () => {
     }
   }, [user?.id]);
 
+  // Real-time synchronization polling (syncs status with mobile app every 5 seconds)
+  useEffect(() => {
+    let pollInterval = null;
+    if (user?.id) {
+      pollInterval = setInterval(() => {
+        fetchDashboardData();
+      }, 5000);
+    }
+    return () => clearInterval(pollInterval);
+  }, [user?.id]);
+
   // Clock-in duration ticking
   useEffect(() => {
     let interval = null;
@@ -111,17 +147,33 @@ const Dashboard = () => {
         const secs = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
         setDuration(`${hrs}:${mins}:${secs}`);
       }, 1000);
+    } else if (recentCheckout) {
+      setDuration(recentCheckout.duration);
     } else {
       setDuration('00:00:00');
     }
     return () => clearInterval(interval);
-  }, [isClockedIn, activeSession]);
+  }, [isClockedIn, activeSession, recentCheckout]);
 
   const handleClockToggle = async () => {
     try {
       if (isClockedIn) {
         // Clock Out
         await api.attendance.checkOut(user.id, gpsPreset);
+        
+        if (activeSession) {
+          const checkInTime = new Date(activeSession.checkIn || activeSession.createdAt);
+          const diff = Math.abs(new Date() - checkInTime);
+          const hrs = Math.floor(diff / (1000 * 60 * 60)).toString().padStart(2, '0');
+          const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+          const secs = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
+          
+          setRecentCheckout({
+            duration: `${hrs}:${mins}:${secs}`,
+            checkOutTime: new Date()
+          });
+        }
+        
         setIsClockedIn(false);
         setActiveSession(null);
         confetti({ particleCount: 80, spread: 60, origin: { y: 0.85 } });
@@ -130,10 +182,16 @@ const Dashboard = () => {
         const res = await api.attendance.checkIn(user.id, gpsPreset);
         setIsClockedIn(true);
         setActiveSession(res.data.attendance);
+        setRecentCheckout(null);
       }
       fetchDashboardData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Clock action failed.');
+      const errMsg = err.response?.data?.message || '';
+      if (errMsg.includes('No active check-in session') || errMsg.includes('already exists')) {
+        fetchDashboardData();
+      } else {
+        alert(errMsg || 'Clock action failed.');
+      }
     }
   };
 
@@ -258,7 +316,9 @@ const Dashboard = () => {
                 <p className="text-[12px] text-slate-550">
                   {isClockedIn 
                     ? `Checked-in today at ${new Date(activeSession?.checkIn || activeSession?.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` 
-                    : 'System idle. Waiting to check-in.'
+                    : recentCheckout
+                      ? `Shift ended at ${new Date(recentCheckout.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (displaying total active hours)`
+                      : 'System idle. Waiting to check-in.'
                   }
                 </p>
               </div>

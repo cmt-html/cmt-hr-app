@@ -1,36 +1,28 @@
-const prisma = require('../services/prisma.service');
-const mockDb = require('../services/mock.service');
+const { Document } = require('../services/db.service');
+const mongoose = require('mongoose');
 
 exports.uploadDocument = async (req, res) => {
   try {
     const { name, type, userId } = req.body;
     const organizationId = req.organizationId;
-    const url = `/mock/uploads/${userId}/${Date.now()}_${name}`;
-
-    try {
-      const document = await prisma.document.create({
-        data: {
-          name,
-          type,
-          url,
-          userId,
-          organizationId
-        }
-      });
-      return res.status(201).json({ message: 'Document uploaded (Postgres)', document });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Document Error, using Mock:', dbError.message);
+    
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Valid userId is required.' });
     }
 
-    // Mock Fallback
-    const document = mockDb.create('documents', {
+    const url = `/mock/uploads/${userId}/${Date.now()}_${name}`;
+
+    const doc = new Document({
       name,
       type,
       url,
       userId,
-      organizationId
+      organizationId,
+      sizeKB: Math.floor(Math.random() * 500) + 10  // mock size
     });
-    res.status(201).json({ message: 'Document uploaded (Mock)', document });
+    await doc.save();
+
+    res.status(201).json({ message: 'Document uploaded successfully', document: { ...doc.toObject(), id: doc._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Document upload failed', error: error.message });
   }
@@ -39,20 +31,15 @@ exports.uploadDocument = async (req, res) => {
 exports.getDocuments = async (req, res) => {
   try {
     const { userId } = req.params;
-
-    try {
-      const documents = await prisma.document.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' }
-      });
-      return res.json(documents);
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Get Documents Error, using Mock:', dbError.message);
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Valid userId is required.' });
     }
 
-    // Mock Fallback
-    const documents = mockDb.find('documents', { userId });
-    res.json(documents);
+    const documents = await Document.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(documents.map(d => ({ ...d, id: d._id.toString() })));
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch documents', error: error.message });
   }

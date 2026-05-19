@@ -1,11 +1,8 @@
 {
-  "/employees/page": "app/employees/page.js",
-  "/system/page": "app/system/page.js",
-  "/billing/page": "app/billing/page.js",
-  "/page": "app/page.js",
   "/login/page": "app/login/page.js",
-  "/attendance/page": "app/attendance/page.js",
+  "/experience/page": "app/experience/page.js",
   "/hiring/page": "app/hiring/page.js",
-  "/performance/page": "app/performance/page.js",
-  "/experience/page": "app/experience/page.js"
+  "/employees/page": "app/employees/page.js",
+  "/attendance/page": "app/attendance/page.js",
+  "/performance/page": "app/performance/page.js"
 }

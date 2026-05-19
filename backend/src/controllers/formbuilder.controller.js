@@ -1,37 +1,36 @@
-const prisma = require('../services/prisma.service');
-const mockDb = require('../services/mock.service');
+const { CustomField } = require('../services/db.service');
+const mongoose = require('mongoose');
 
 exports.createCustomField = async (req, res) => {
   try {
-    const { fieldName, fieldLabel, fieldType, options, isRequired } = req.body;
+    const { fieldName, name, fieldLabel, label, fieldType, type, options, isRequired, required } = req.body;
     const organizationId = req.organizationId;
 
-    try {
-      const field = await prisma.customField.create({
-        data: {
-          fieldName,
-          fieldLabel,
-          fieldType,
-          options,
-          isRequired: !!isRequired,
-          organizationId
-        }
-      });
-      return res.status(201).json({ message: 'Custom field created (Postgres)', field });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres CustomField Error, using Mock:', dbError.message);
-    }
+    const finalName = fieldName || name;
+    const finalLabel = fieldLabel || label || finalName;
+    const finalType = fieldType || type || 'TEXT';
+    const finalRequired = isRequired !== undefined ? !!isRequired : (required !== undefined ? !!required : false);
 
-    // Mock Fallback
-    const field = mockDb.create('customFields', {
-      fieldName,
-      fieldLabel,
-      fieldType,
-      options,
-      isRequired: !!isRequired,
-      organizationId
+    const field = new CustomField({
+      organizationId,
+      name: finalName,
+      label: finalLabel,
+      type: finalType,
+      required: finalRequired,
+      options: options || []
     });
-    res.status(201).json({ message: 'Custom field created (Mock)', field });
+    await field.save();
+
+    const normalized = {
+      ...field.toObject(),
+      id: field._id.toString(),
+      fieldName: field.name,
+      fieldLabel: field.label,
+      fieldType: field.type,
+      isRequired: field.required
+    };
+
+    res.status(201).json({ message: 'Custom field created successfully', field: normalized });
   } catch (error) {
     res.status(500).json({ message: 'Failed to create custom field', error: error.message });
   }
@@ -40,19 +39,18 @@ exports.createCustomField = async (req, res) => {
 exports.getCustomFields = async (req, res) => {
   try {
     const organizationId = req.organizationId;
+    const fields = await CustomField.find({ organizationId }).lean();
 
-    try {
-      const fields = await prisma.customField.findMany({
-        where: { organizationId }
-      });
-      return res.json(fields);
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Get CustomFields Error, using Mock:', dbError.message);
-    }
+    const normalized = fields.map(f => ({
+      ...f,
+      id: f._id.toString(),
+      fieldName: f.name,
+      fieldLabel: f.label,
+      fieldType: f.type,
+      isRequired: f.required
+    }));
 
-    // Mock Fallback
-    const fields = mockDb.find('customFields', { organizationId });
-    res.json(fields);
+    res.json(normalized);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch custom fields', error: error.message });
   }
@@ -61,17 +59,14 @@ exports.getCustomFields = async (req, res) => {
 exports.deleteCustomField = async (req, res) => {
   try {
     const { fieldId } = req.params;
-
-    try {
-      await prisma.customField.delete({ where: { id: fieldId } });
-      return res.json({ message: 'Custom field deleted (Postgres)' });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres CustomField Delete Error, using Mock:', dbError.message);
+    if (!mongoose.isValidObjectId(fieldId)) {
+      return res.status(400).json({ message: 'Invalid custom field ID format' });
     }
 
-    // Mock Fallback
-    mockDb.delete('customFields', fieldId);
-    res.json({ message: 'Custom field deleted (Mock)' });
+    const result = await CustomField.findByIdAndDelete(fieldId);
+    if (!result) return res.status(404).json({ message: 'Custom field not found' });
+
+    res.json({ message: 'Custom field deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete custom field', error: error.message });
   }

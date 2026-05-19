@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
 import { 
   Search, 
@@ -25,6 +26,8 @@ import confetti from 'canvas-confetti';
 
 const EmployeeDirectory = () => {
   const { user: currentUser, isAdmin, isManager, isHR } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   
   // Tabs: 'DIRECTORY' | 'ORG_CHART' | 'ADD_EMPLOYEE'
   const [activeTab, setActiveTab] = useState('DIRECTORY');
@@ -293,7 +296,13 @@ const EmployeeDirectory = () => {
                 placeholder="Search by name, role, tags..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-150 rounded-xl outline-none text-[13px] text-slate-700 dark:bg-slate-850 dark:border-slate-750 dark:text-slate-200"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl outline-none text-[13px] placeholder-slate-400 dark:placeholder-slate-500"
+                style={{
+                  backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+                  border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+                  color: isDark ? '#e2e8f0' : '#334155',
+                  boxShadow: 'none'
+                }}
               />
             </div>
 
@@ -302,7 +311,12 @@ const EmployeeDirectory = () => {
               <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-[12px] text-slate-700 outline-none dark:bg-slate-850 dark:border-slate-750 dark:text-slate-200"
+                className="w-full p-2.5 rounded-xl text-[12px] outline-none"
+                style={{
+                  backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+                  border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+                  color: isDark ? '#e2e8f0' : '#334155'
+                }}
               >
                 <option value="ALL">All Departments</option>
                 <option value="Technology">Technology</option>

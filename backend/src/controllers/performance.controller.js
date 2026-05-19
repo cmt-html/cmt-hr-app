@@ -1,5 +1,5 @@
-const prisma = require('../services/prisma.service');
-const mockDb = require('../services/mock.service');
+const { Goal, Review, User } = require('../services/db.service');
+const mongoose = require('mongoose');
 
 // ==========================================
 //               GOALS (OKRs)
@@ -10,28 +10,11 @@ exports.createGoal = async (req, res) => {
     const { userId, title, description, targetValue, currentValue, unit, startDate, endDate } = req.body;
     const organizationId = req.organizationId;
 
-    try {
-      const goal = await prisma.goal.create({
-        data: {
-          userId,
-          organizationId,
-          title,
-          description,
-          targetValue: parseInt(targetValue) || 100,
-          currentValue: parseInt(currentValue) || 0,
-          unit: unit || '%',
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
-          status: 'PENDING'
-        }
-      });
-      return res.status(201).json({ message: 'Goal created (Postgres)', goal });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Goal Error, using Mock:', dbError.message);
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Valid userId is required.' });
     }
 
-    // Mock Fallback
-    const goal = mockDb.create('goals', {
+    const goal = new Goal({
       userId,
       organizationId,
       title,
@@ -39,11 +22,12 @@ exports.createGoal = async (req, res) => {
       targetValue: parseInt(targetValue) || 100,
       currentValue: parseInt(currentValue) || 0,
       unit: unit || '%',
-      startDate: new Date(startDate).toISOString(),
-      endDate: new Date(endDate).toISOString(),
+      dueDate: endDate ? new Date(endDate) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
       status: 'PENDING'
     });
-    res.status(201).json({ message: 'Goal created (Mock)', goal });
+    await goal.save();
+
+    res.status(201).json({ message: 'Goal created successfully', goal: { ...goal.toObject(), id: goal._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Failed to create goal', error: error.message });
   }
@@ -52,20 +36,13 @@ exports.createGoal = async (req, res) => {
 exports.getGoals = async (req, res) => {
   try {
     const { userId } = req.params;
-
-    try {
-      const goals = await prisma.goal.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' }
-      });
-      return res.json(goals);
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Goal Get Error, using Mock:', dbError.message);
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Valid userId is required.' });
     }
 
-    // Mock Fallback
-    const goals = mockDb.find('goals', { userId });
-    res.json(goals);
+    const goals = await Goal.find({ userId }).sort({ createdAt: -1 }).lean();
+
+    res.json(goals.map(g => ({ ...g, id: g._id.toString() })));
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch goals', error: error.message });
   }
@@ -76,25 +53,23 @@ exports.updateGoalProgress = async (req, res) => {
     const { goalId } = req.params;
     const { currentValue, status } = req.body;
 
-    try {
-      const goal = await prisma.goal.update({
-        where: { id: goalId },
-        data: { 
-          currentValue: currentValue !== undefined ? parseInt(currentValue) : undefined,
-          status 
-        }
-      });
-      return res.json({ message: 'Goal updated (Postgres)', goal });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Goal Update Error, using Mock:', dbError.message);
+    if (!mongoose.isValidObjectId(goalId)) {
+      return res.status(400).json({ message: 'Invalid goal ID' });
     }
 
-    // Mock Fallback
-    const goal = mockDb.update('goals', goalId, { 
-      currentValue: currentValue !== undefined ? parseInt(currentValue) : undefined,
-      status 
-    });
-    res.json({ message: 'Goal updated (Mock)', goal });
+    const updateData = {};
+    if (currentValue !== undefined) updateData.currentValue = parseInt(currentValue) || 0;
+    if (status !== undefined) updateData.status = status;
+
+    const goal = await Goal.findByIdAndUpdate(
+      goalId,
+      { $set: updateData },
+      { new: true }
+    ).lean();
+
+    if (!goal) return res.status(404).json({ message: 'Goal not found' });
+
+    res.json({ message: 'Goal updated successfully', goal: { ...goal, id: goal._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update goal', error: error.message });
   }
@@ -104,19 +79,19 @@ exports.approveGoal = async (req, res) => {
   try {
     const { goalId } = req.params;
 
-    try {
-      const goal = await prisma.goal.update({
-        where: { id: goalId },
-        data: { status: 'APPROVED' }
-      });
-      return res.json({ message: 'Goal approved (Postgres)', goal });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Goal Approve Error, using Mock:', dbError.message);
+    if (!mongoose.isValidObjectId(goalId)) {
+      return res.status(400).json({ message: 'Invalid goal ID' });
     }
 
-    // Mock Fallback
-    const goal = mockDb.update('goals', goalId, { status: 'APPROVED' });
-    res.json({ message: 'Goal approved (Mock)', goal });
+    const goal = await Goal.findByIdAndUpdate(
+      goalId,
+      { $set: { status: 'APPROVED' } },
+      { new: true }
+    ).lean();
+
+    if (!goal) return res.status(404).json({ message: 'Goal not found' });
+
+    res.json({ message: 'Goal approved successfully', goal: { ...goal, id: goal._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Failed to approve goal', error: error.message });
   }
@@ -131,33 +106,31 @@ exports.createReviewCycle = async (req, res) => {
     const { revieweeId, reviewerId, cycleName } = req.body;
     const organizationId = req.organizationId;
 
-    try {
-      const review = await prisma.performanceReview.create({
-        data: {
-          revieweeId,
-          reviewerId,
-          cycleName,
-          rating: 3,
-          status: 'PENDING'
-        }
-      });
-      return res.status(201).json({ message: 'Review cycle created (Postgres)', review });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Review Error, using Mock:', dbError.message);
+    if (!revieweeId || !reviewerId) {
+      return res.status(400).json({ message: 'Reviewee and Reviewer are required.' });
     }
 
-    // Mock Fallback
-    const review = mockDb.create('reviews', {
-      revieweeId,
-      reviewerId,
-      cycleName,
+    const review = new Review({
+      userId: revieweeId,
+      managerId: reviewerId,
+      period: cycleName,
       rating: 3,
-      comments: '',
       selfReview: '',
-      status: 'PENDING',
+      managerReview: '',
+      status: 'PENDING_SELF',
       organizationId
     });
-    res.status(201).json({ message: 'Review cycle created (Mock)', review });
+    await review.save();
+
+    const result = {
+      ...review.toObject(),
+      id: review._id.toString(),
+      revieweeId: review.userId.toString(),
+      reviewerId: review.managerId.toString(),
+      cycleName: review.period
+    };
+
+    res.status(201).json({ message: 'Review cycle created successfully', review: result });
   } catch (error) {
     res.status(500).json({ message: 'Failed to create review cycle', error: error.message });
   }
@@ -168,25 +141,27 @@ exports.submitSelfReview = async (req, res) => {
     const { reviewId } = req.params;
     const { selfReview } = req.body;
 
-    try {
-      const review = await prisma.performanceReview.update({
-        where: { id: reviewId },
-        data: { 
-          selfReview,
-          status: 'SELF_COMPLETED'
-        }
-      });
-      return res.json({ message: 'Self review submitted (Postgres)', review });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Self Review Error, using Mock:', dbError.message);
+    if (!mongoose.isValidObjectId(reviewId)) {
+      return res.status(400).json({ message: 'Invalid review ID' });
     }
 
-    // Mock Fallback
-    const review = mockDb.update('reviews', reviewId, { 
-      selfReview,
-      status: 'SELF_COMPLETED'
-    });
-    res.json({ message: 'Self review submitted (Mock)', review });
+    const review = await Review.findByIdAndUpdate(
+      reviewId,
+      { $set: { selfReview, status: 'PENDING_MANAGER' } },
+      { new: true }
+    ).lean();
+
+    if (!review) return res.status(404).json({ message: 'Review not found' });
+
+    const result = {
+      ...review,
+      id: review._id.toString(),
+      revieweeId: review.userId.toString(),
+      reviewerId: review.managerId.toString(),
+      cycleName: review.period
+    };
+
+    res.json({ message: 'Self review submitted successfully', review: result });
   } catch (error) {
     res.status(500).json({ message: 'Failed to submit self review', error: error.message });
   }
@@ -197,27 +172,27 @@ exports.submitManagerReview = async (req, res) => {
     const { reviewId } = req.params;
     const { rating, comments } = req.body;
 
-    try {
-      const review = await prisma.performanceReview.update({
-        where: { id: reviewId },
-        data: { 
-          rating: parseInt(rating) || 3,
-          comments,
-          status: 'FINISHED'
-        }
-      });
-      return res.json({ message: 'Manager review completed (Postgres)', review });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Manager Review Error, using Mock:', dbError.message);
+    if (!mongoose.isValidObjectId(reviewId)) {
+      return res.status(400).json({ message: 'Invalid review ID' });
     }
 
-    // Mock Fallback
-    const review = mockDb.update('reviews', reviewId, { 
-      rating: parseInt(rating) || 3,
-      comments,
-      status: 'FINISHED'
-    });
-    res.json({ message: 'Manager review completed (Mock)', review });
+    const review = await Review.findByIdAndUpdate(
+      reviewId,
+      { $set: { rating: parseInt(rating) || 3, managerReview: comments, status: 'COMPLETED' } },
+      { new: true }
+    ).lean();
+
+    if (!review) return res.status(404).json({ message: 'Review not found' });
+
+    const result = {
+      ...review,
+      id: review._id.toString(),
+      revieweeId: review.userId.toString(),
+      reviewerId: review.managerId.toString(),
+      cycleName: review.period
+    };
+
+    res.json({ message: 'Manager review completed successfully', review: result });
   } catch (error) {
     res.status(500).json({ message: 'Failed to complete review', error: error.message });
   }
@@ -225,37 +200,31 @@ exports.submitManagerReview = async (req, res) => {
 
 exports.getReviews = async (req, res) => {
   try {
-    const { userId } = req.params; // Can be reviewee or reviewer
-
-    try {
-      const reviews = await prisma.performanceReview.findMany({
-        where: {
-          OR: [
-            { revieweeId: userId },
-            { reviewerId: userId }
-          ]
-        },
-        include: {
-          reviewee: { select: { firstName: true, lastName: true, email: true, designation: true } },
-          reviewer: { select: { firstName: true, lastName: true, email: true, designation: true } }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
-      return res.json(reviews);
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Get Reviews Error, using Mock:', dbError.message);
+    const { userId } = req.params;
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Valid userId is required.' });
     }
 
-    // Mock Fallback
-    const reviews = mockDb.find('reviews') || [];
-    const userReviews = reviews.filter(r => r.revieweeId === userId || r.reviewerId === userId);
-    
-    // Enrich with user data
-    const enriched = userReviews.map(r => {
-      const reviewee = mockDb.findOne('users', { id: r.revieweeId }) || { firstName: 'Unknown', lastName: '' };
-      const reviewer = mockDb.findOne('users', { id: r.reviewerId }) || { firstName: 'Unknown', lastName: '' };
-      return { ...r, reviewee, reviewer };
-    });
+    const reviews = await Review.find({
+      $or: [
+        { userId },
+        { managerId: userId }
+      ]
+    }).sort({ createdAt: -1 }).lean();
+
+    const enriched = await Promise.all(reviews.map(async (r) => {
+      const reviewee = await User.findById(r.userId).select('firstName lastName email designation').lean();
+      const reviewer = await User.findById(r.managerId).select('firstName lastName email designation').lean();
+      return {
+        ...r,
+        id: r._id.toString(),
+        revieweeId: r.userId.toString(),
+        reviewerId: r.managerId.toString(),
+        cycleName: r.period,
+        reviewee: reviewee ? { ...reviewee, id: reviewee._id.toString() } : null,
+        reviewer: reviewer ? { ...reviewer, id: reviewer._id.toString() } : null
+      };
+    }));
 
     res.json(enriched);
   } catch (error) {

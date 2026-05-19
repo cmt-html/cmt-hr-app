@@ -1,5 +1,5 @@
-const prisma = require('../services/prisma.service');
-const mockDb = require('../services/mock.service');
+const { Job, Applicant, Separation, User } = require('../services/db.service');
+const mongoose = require('mongoose');
 
 // ==========================================
 //               JOB POSTINGS
@@ -10,34 +10,17 @@ exports.createJob = async (req, res) => {
     const { title, description, department, requirements, salaryRange } = req.body;
     const organizationId = req.organizationId;
 
-    try {
-      const job = await prisma.job.create({
-        data: {
-          title,
-          description,
-          department,
-          requirements,
-          salaryRange,
-          status: 'OPEN',
-          organizationId
-        }
-      });
-      return res.status(201).json({ message: 'Job created (Postgres)', job });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Job Error, using Mock:', dbError.message);
-    }
-
-    // Mock Fallback
-    const job = mockDb.create('jobs', {
+    const job = new Job({
       title,
       description,
       department,
-      requirements,
-      salaryRange,
+      requirements: Array.isArray(requirements) ? requirements : [requirements].filter(Boolean),
       status: 'OPEN',
       organizationId
     });
-    res.status(201).json({ message: 'Job created (Mock)', job });
+    await job.save();
+
+    res.status(201).json({ message: 'Job created successfully', job: { ...job.toObject(), id: job._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Failed to create job', error: error.message });
   }
@@ -46,20 +29,9 @@ exports.createJob = async (req, res) => {
 exports.getJobs = async (req, res) => {
   try {
     const organizationId = req.organizationId;
+    const jobs = await Job.find({ organizationId }).sort({ createdAt: -1 }).lean();
 
-    try {
-      const jobs = await prisma.job.findMany({
-        where: { organizationId },
-        orderBy: { createdAt: 'desc' }
-      });
-      return res.json(jobs);
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Get Jobs Error, using Mock:', dbError.message);
-    }
-
-    // Mock Fallback
-    const jobs = mockDb.find('jobs', { organizationId });
-    res.json(jobs);
+    res.json(jobs.map(j => ({ ...j, id: j._id.toString() })));
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch jobs', error: error.message });
   }
@@ -74,44 +46,25 @@ exports.applyJob = async (req, res) => {
     const { jobId, name, email, phone, resumeUrl } = req.body;
     const organizationId = req.organizationId;
 
-    try {
-      const applicant = await prisma.applicant.create({
-        data: {
-          jobId,
-          name,
-          email,
-          phone,
-          resumeUrl,
-          status: 'NEW',
-          organizationId
-        }
-      });
-      return res.status(201).json({ message: 'Applied successfully (Postgres)', applicant });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Application Error, using Mock:', dbError.message);
-    }
+    const onboardingTasks = [
+      { id: 't1', title: 'Issue Laptop & Hardware credentials', status: 'PENDING' },
+      { id: 't2', title: 'HR Paperwork & Signature', status: 'PENDING' },
+      { id: 't3', title: 'Desk & Security ID Access Card allocation', status: 'PENDING' }
+    ];
 
-    // Mock Fallback
-    const applicant = mockDb.create('applicants', {
-      jobId,
+    const applicant = new Applicant({
+      jobId: jobId && mongoose.isValidObjectId(jobId) ? jobId : undefined,
       name,
       email,
       phone,
       resumeUrl,
-      status: 'NEW',
-      onboardingTasks: [
-        { id: 't1', task: 'Issue Laptop & Hardware credentials', status: 'PENDING', assignee: 'IT' },
-        { id: 't2', task: 'HR Paperwork & Signature', status: 'PENDING', assignee: 'HR' },
-        { id: 't3', task: 'Desk & Security ID Access Card allocation', status: 'PENDING', assignee: 'FACILITIES' }
-      ],
-      offboardingTasks: [
-        { id: 'o1', task: 'Revoke Email & SaaS accesses', status: 'PENDING', assignee: 'IT' },
-        { id: 'o2', task: 'Conduct Exit Interview Form', status: 'PENDING', assignee: 'HR' },
-        { id: 'o3', task: 'Handover Asset & Office Keycards', status: 'PENDING', assignee: 'FACILITIES' }
-      ],
+      status: 'APPLIED',
+      onboardingTasks,
       organizationId
     });
-    res.status(201).json({ message: 'Applied successfully (Mock)', applicant });
+    await applicant.save();
+
+    res.status(201).json({ message: 'Applied successfully', applicant: { ...applicant.toObject(), id: applicant._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Application failed', error: error.message });
   }
@@ -120,25 +73,18 @@ exports.applyJob = async (req, res) => {
 exports.getApplicants = async (req, res) => {
   try {
     const organizationId = req.organizationId;
+    const applicants = await Applicant.find({ organizationId }).populate('jobId').sort({ createdAt: -1 }).lean();
 
-    try {
-      const applicants = await prisma.applicant.findMany({
-        where: { organizationId },
-        include: { job: { select: { title: true, department: true } } },
-        orderBy: { createdAt: 'desc' }
-      });
-      return res.json(applicants);
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Get Applicants Error, using Mock:', dbError.message);
-    }
-
-    // Mock Fallback
-    const applicants = mockDb.find('applicants', { organizationId });
-    const enriched = applicants.map(a => {
-      const job = mockDb.findOne('jobs', { id: a.jobId }) || { title: 'General Application', department: 'HR' };
-      return { ...a, job };
+    const normalized = applicants.map(a => {
+      const job = a.jobId || { title: 'General Application', department: 'HR' };
+      return {
+        ...a,
+        id: a._id.toString(),
+        job: { ...job, id: job._id?.toString() }
+      };
     });
-    res.json(enriched);
+
+    res.json(normalized);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch applicants', error: error.message });
   }
@@ -149,19 +95,19 @@ exports.updateApplicantStatus = async (req, res) => {
     const { applicantId } = req.params;
     const { status } = req.body;
 
-    try {
-      const applicant = await prisma.applicant.update({
-        where: { id: applicantId },
-        data: { status }
-      });
-      return res.json({ message: 'Status updated (Postgres)', applicant });
-    } catch (dbError) {
-      console.warn('⚠️ Postgres Applicant Update Error, using Mock:', dbError.message);
+    if (!mongoose.isValidObjectId(applicantId)) {
+      return res.status(400).json({ message: 'Invalid applicant ID' });
     }
 
-    // Mock Fallback
-    const applicant = mockDb.update('applicants', applicantId, { status });
-    res.json({ message: 'Status updated (Mock)', applicant });
+    const applicant = await Applicant.findByIdAndUpdate(
+      applicantId,
+      { $set: { status } },
+      { new: true }
+    ).lean();
+
+    if (!applicant) return res.status(404).json({ message: 'Applicant not found' });
+
+    res.json({ message: 'Status updated successfully', applicant: { ...applicant, id: applicant._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Status update failed', error: error.message });
   }
@@ -176,18 +122,23 @@ exports.updateOnboardingTask = async (req, res) => {
     const { applicantId } = req.params;
     const { taskId, status } = req.body; // status: 'PENDING' or 'DONE'
 
-    // Mock Fallback as default for Json task lists, or Prisma update
-    const applicant = mockDb.findOne('applicants', { id: applicantId });
+    if (!mongoose.isValidObjectId(applicantId)) {
+      return res.status(400).json({ message: 'Invalid applicant ID' });
+    }
+
+    const applicant = await Applicant.findById(applicantId);
     if (!applicant) return res.status(404).json({ message: 'Applicant not found' });
 
     const tasks = applicant.onboardingTasks || [];
     const index = tasks.findIndex(t => t.id === taskId);
     if (index !== -1) {
-      tasks[index].status = status;
+      tasks[index].status = status === 'DONE' ? 'DONE' : 'PENDING';
     }
 
-    const updated = mockDb.update('applicants', applicantId, { onboardingTasks: tasks });
-    res.json({ message: 'Onboarding task updated', applicant: updated });
+    applicant.onboardingTasks = tasks;
+    await applicant.save();
+
+    res.json({ message: 'Onboarding task updated successfully', applicant: { ...applicant.toObject(), id: applicant._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Task update failed', error: error.message });
   }
@@ -202,28 +153,30 @@ exports.requestSeparation = async (req, res) => {
     const { userId, reason, lastWorkingDay } = req.body;
     const organizationId = req.organizationId;
 
-    // Create an applicant placeholder representing offboarding, or mark in employee record
-    // In this simplified Zoho HR workflow, we can register an offboarding workflow directly for the user.
-    // We will save this exits/separations request in mock DB as an applicant status or user exit metadata
-    const user = mockDb.findOne('users', { id: userId });
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Valid employee ID is required.' });
+    }
+
+    const user = await User.findById(userId).lean();
     if (!user) return res.status(404).json({ message: 'Employee not found' });
 
     const offboardingTasks = [
-      { id: 'o1', task: 'Revoke Email & SaaS accesses', status: 'PENDING', assignee: 'IT' },
-      { id: 'o2', task: 'Conduct Exit Interview Form', status: 'PENDING', assignee: 'HR' },
-      { id: 'o3', task: 'Handover Asset & Office Keycards', status: 'PENDING', assignee: 'FACILITIES' }
+      { id: 'o1', title: 'Revoke Email & SaaS accesses', status: 'PENDING' },
+      { id: 'o2', title: 'Conduct Exit Interview Form', status: 'PENDING' },
+      { id: 'o3', title: 'Handover Asset & Office Keycards', status: 'PENDING' }
     ];
 
-    const exitRequest = mockDb.create('exits', {
+    const separation = new Separation({
       userId,
       reason,
-      lastWorkingDay,
+      lastWorkingDay: lastWorkingDay ? new Date(lastWorkingDay) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       status: 'PENDING',
       offboardingTasks,
       organizationId
     });
+    await separation.save();
 
-    res.status(201).json({ message: 'Separation request raised', exitRequest });
+    res.status(201).json({ message: 'Separation request raised successfully', exitRequest: { ...separation.toObject(), id: separation._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Failed to raise exit request', error: error.message });
   }
@@ -232,15 +185,18 @@ exports.requestSeparation = async (req, res) => {
 exports.getSeparations = async (req, res) => {
   try {
     const organizationId = req.organizationId;
-    const exits = mockDb.find('exits', { organizationId }) || [];
-    
-    // Enrich with user profile details
-    const enriched = exits.map(e => {
-      const user = mockDb.findOne('users', { id: e.userId }) || { firstName: 'Unknown', lastName: '' };
-      return { ...e, user };
+    const exits = await Separation.find({ organizationId }).populate('userId').sort({ createdAt: -1 }).lean();
+
+    const normalized = exits.map(e => {
+      const user = e.userId || { firstName: 'Unknown', lastName: '' };
+      return {
+        ...e,
+        id: e._id.toString(),
+        user: { ...user, id: user._id?.toString() }
+      };
     });
 
-    res.json(enriched);
+    res.json(normalized);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch separations', error: error.message });
   }
@@ -251,8 +207,19 @@ exports.updateExitStatus = async (req, res) => {
     const { exitId } = req.params;
     const { status } = req.body; // status: APPROVED, REJECTED, COMPLETED
 
-    const exit = mockDb.update('exits', exitId, { status });
-    res.json({ message: 'Exit status updated', exit });
+    if (!mongoose.isValidObjectId(exitId)) {
+      return res.status(400).json({ message: 'Invalid exit ID' });
+    }
+
+    const separation = await Separation.findByIdAndUpdate(
+      exitId,
+      { $set: { status } },
+      { new: true }
+    ).lean();
+
+    if (!separation) return res.status(404).json({ message: 'Exit workflow not found' });
+
+    res.json({ message: 'Exit status updated successfully', exit: { ...separation, id: separation._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update exit status', error: error.message });
   }
@@ -263,17 +230,23 @@ exports.updateExitTask = async (req, res) => {
     const { exitId } = req.params;
     const { taskId, status } = req.body; // status: PENDING, DONE
 
-    const exit = mockDb.findOne('exits', { id: exitId });
-    if (!exit) return res.status(404).json({ message: 'Exit workflow not found' });
-
-    const tasks = exit.offboardingTasks || [];
-    const index = tasks.findIndex(t => t.id === taskId);
-    if (index !== -1) {
-      tasks[index].status = status;
+    if (!mongoose.isValidObjectId(exitId)) {
+      return res.status(400).json({ message: 'Invalid exit ID' });
     }
 
-    const updated = mockDb.update('exits', exitId, { offboardingTasks: tasks });
-    res.json({ message: 'Exit task updated', exit: updated });
+    const separation = await Separation.findById(exitId);
+    if (!separation) return res.status(404).json({ message: 'Exit workflow not found' });
+
+    const tasks = separation.offboardingTasks || [];
+    const index = tasks.findIndex(t => t.id === taskId);
+    if (index !== -1) {
+      tasks[index].status = status === 'DONE' ? 'DONE' : 'PENDING';
+    }
+
+    separation.offboardingTasks = tasks;
+    await separation.save();
+
+    res.json({ message: 'Exit task updated successfully', exit: { ...separation.toObject(), id: separation._id.toString() } });
   } catch (error) {
     res.status(500).json({ message: 'Exit task update failed', error: error.message });
   }
