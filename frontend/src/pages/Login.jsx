@@ -14,7 +14,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Zoho HR clone demo shortcuts for testers
+  // CMT HR clone demo shortcuts for testers
   const testAccounts = [
     { label: 'Admin (Systems)', email: 'admin@cloudmojo.tech', role: 'ADMIN', color: 'from-amber-500 to-orange-600', subdomain: 'cloudmojo' },
     { label: 'HR Manager', email: 'jane.hr@cloudmojo.tech', role: 'HR', color: 'from-pink-500 to-rose-600', subdomain: 'cloudmojo' },
@@ -46,7 +46,7 @@ const Login = () => {
     setError('');
     setSubmitting(true);
     try {
-      // In Zoho HR demo fallback, the seed password is "password123"
+      // In CMT HR demo fallback, the seed password is "password123"
       await login(accEmail, 'password123', sub);
       router.push('/');
     } catch (err) {
@@ -73,7 +73,7 @@ const Login = () => {
             </div>
             <div className="inline-flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide">
               <Sparkles size={14} className="animate-spin" />
-              <span>Zoho HR Premium Replica v1.0</span>
+              <span>CMT HR Premium Replica v1.0</span>
             </div>
           </div>
           <h1 className="text-4xl lg:text-5xl font-outfit font-extrabold text-white leading-tight tracking-tight">

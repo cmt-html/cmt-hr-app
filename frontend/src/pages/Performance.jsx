@@ -184,7 +184,7 @@ const Performance = () => {
     MANAGER FEEDBACK:
     "${review.comments || 'No manager comments recorded.'}"
     ------------------------------------------------------
-    Generated via Zoho HRMS engine. Security verified.
+    Generated via CMT HRMS engine. Security verified.
     ======================================================
     `;
 

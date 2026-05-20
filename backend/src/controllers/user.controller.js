@@ -35,7 +35,8 @@ exports.createIndividualUser = async (req, res) => {
       employeeId,
       dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : new Date(),
       managerId: managerId && mongoose.isValidObjectId(managerId) ? managerId : undefined,
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      customFields: req.body.customFields || {}
     });
     await user.save();
 
@@ -84,7 +85,7 @@ exports.updateProfile = async (req, res) => {
   try {
     const { userId } = req.params;
     const allowedFields = ['firstName', 'lastName', 'phone', 'designation', 'department',
-                           'emergencyContact', 'emergencyContactName', 'profilePicture'];
+                           'emergencyContact', 'emergencyContactName', 'profilePicture', 'customFields'];
 
     const updateData = {};
     allowedFields.forEach(f => { if (req.body[f] !== undefined) updateData[f] = req.body[f]; });

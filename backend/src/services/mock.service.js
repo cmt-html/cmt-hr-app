@@ -3,7 +3,7 @@ const path = require('path');
 
 const MOCK_DATA_PATH = path.join(__dirname, '../../mock_db.json');
 
-// Extensive initial mock data mimicking Zoho HR environment
+// Extensive initial mock data mimicking CMT HR environment
 const initialData = {
   organizations: [
     {

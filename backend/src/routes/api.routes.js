@@ -11,7 +11,7 @@ const leaveController = require('../controllers/leave.controller');
 const configController = require('../controllers/config.controller');
 const dashboardController = require('../controllers/dashboard.controller');
 
-// New Zoho Replica Controllers
+// New CMT Replica Controllers
 const performanceController = require('../controllers/performance.controller');
 const hiringController = require('../controllers/hiring.controller');
 const ticketController = require('../controllers/ticket.controller');
@@ -76,7 +76,7 @@ router.put('/announcements/:announcementId/like', announcementController.likeAnn
 router.post('/announcements/:announcementId/comment', announcementController.commentAnnouncement);
 
 // ==========================================
-//          ZOHO HR NEW ENDPOINTS
+//          CMT HR NEW ENDPOINTS
 // ==========================================
 
 // Performance OKRs & Goals

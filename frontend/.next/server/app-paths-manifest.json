@@ -1,1 +1,7 @@
-{}
+{
+  "/page": "app/page.js",
+  "/experience/page": "app/experience/page.js",
+  "/system/page": "app/system/page.js",
+  "/billing/page": "app/billing/page.js",
+  "/hiring/page": "app/hiring/page.js"
+}

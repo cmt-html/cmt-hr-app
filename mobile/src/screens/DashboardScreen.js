@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -13,6 +13,7 @@ import {
   Easing,
   Alert
 } from 'react-native';
+import { staggerEntrance, makeEntranceValues, makePressScale } from '../utils/animations';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
@@ -75,6 +76,16 @@ const DashboardScreen = ({ navigation }) => {
   const [presentDays, setPresentDays] = useState(0);
   const [pulseAnim] = useState(new Animated.Value(1));
 
+  // ── Entrance animations ────────────────────────────────────────────────────
+  const headerAnim   = useRef(makeEntranceValues(30)).current;
+  const cardAnim     = useRef(makeEntranceValues(40)).current;
+  const sectionAnim  = useRef(makeEntranceValues(30)).current;
+  const quickAnim    = useRef(makeEntranceValues(35)).current;
+  const activityAnim = useRef(makeEntranceValues(30)).current;
+
+  // ── Check-in button press scale ────────────────────────────────────────────
+  const checkInPress = useRef(makePressScale(0.93)).current;
+
   useFocusEffect(
     React.useCallback(() => {
       const init = async () => {
@@ -133,6 +144,13 @@ const DashboardScreen = ({ navigation }) => {
         })
       ])
     ).start();
+
+    // Staggered entrance for dashboard sections
+    staggerEntrance(
+      [headerAnim, cardAnim, sectionAnim, quickAnim, activityAnim],
+      120,
+      450
+    );
   }, []);
 
   const syncWithBackend = async (userId) => {
@@ -283,7 +301,15 @@ const DashboardScreen = ({ navigation }) => {
       <StatusBar barStyle="light-content" />
       
       {/* Premium Header Background */}
-      <View style={styles.headerBackground}>
+      <Animated.View
+        style={[
+          styles.headerBackground,
+          {
+            opacity: headerAnim.opacity,
+            transform: [{ translateY: headerAnim.translateY }],
+          },
+        ]}
+      >
         <LinearGradient
           colors={['#1E1B4B', '#312E81', '#4338CA']}
           style={styles.gradientHeader}
@@ -312,7 +338,15 @@ const DashboardScreen = ({ navigation }) => {
           </SafeAreaView>
 
           {/* Glass Attendance Card */}
-          <View style={styles.attendanceContainer}>
+          <Animated.View
+            style={[
+              styles.attendanceContainer,
+              {
+                opacity: cardAnim.opacity,
+                transform: [{ translateY: cardAnim.translateY }],
+              },
+            ]}
+          >
             <View style={styles.glassCard}>
               <View style={styles.cardHeader}>
                 <View style={styles.statusBox}>
@@ -335,23 +369,28 @@ const DashboardScreen = ({ navigation }) => {
                   <Text style={styles.timerLabel}>SESSION TIME</Text>
                   <Text style={styles.timerText}>{formatTime(timer)}</Text>
                 </View>
-                <TouchableOpacity 
-                  style={[
-                    styles.actionBtn, 
-                    { backgroundColor: isCheckedIn ? '#FFFFFF' : (hasCheckedOutToday ? '#10B981' : '#4F46E5') }
-                  ]}
-                  onPress={handleCheckIn}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.actionBtnText, { color: isCheckedIn ? '#4F46E5' : '#FFFFFF' }]}>
-                    {isCheckedIn ? 'Check-Out' : (hasCheckedOutToday ? 'Resume Check-In' : 'Check-In')}
-                  </Text>
-                </TouchableOpacity>
+                {/* Animated press-scale check-in button */}
+                <Animated.View style={{ transform: [{ scale: checkInPress.scale }] }}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.actionBtn, 
+                      { backgroundColor: isCheckedIn ? '#FFFFFF' : (hasCheckedOutToday ? '#10B981' : '#4F46E5') }
+                    ]}
+                    onPress={handleCheckIn}
+                    onPressIn={checkInPress.pressIn}
+                    onPressOut={checkInPress.pressOut}
+                    activeOpacity={1}
+                  >
+                    <Text style={[styles.actionBtnText, { color: isCheckedIn ? '#4F46E5' : '#FFFFFF' }]}>
+                      {isCheckedIn ? 'Check-Out' : (hasCheckedOutToday ? 'Resume Check-In' : 'Check-In')}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
               </View>
             </View>
-          </View>
+          </Animated.View>
         </LinearGradient>
-      </View>
+      </Animated.View>
 
       <ScrollView 
         style={styles.scrollView}
@@ -362,7 +401,15 @@ const DashboardScreen = ({ navigation }) => {
 
         {/* Manager Console Section */}
         {['MANAGER', 'HR', 'ORG_ADMIN'].includes(userData?.role) && (
-          <View style={styles.section}>
+          <Animated.View
+            style={[
+              styles.section,
+              {
+                opacity: sectionAnim.opacity,
+                transform: [{ translateY: sectionAnim.translateY }],
+              },
+            ]}
+          >
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>MANAGER CONSOLE</Text>
             </View>
@@ -385,24 +432,40 @@ const DashboardScreen = ({ navigation }) => {
                 <ChevronRight size={20} color="#94A3B8" />
               </View>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
 
         {/* Quick Actions */}
-        <View style={styles.section}>
+        <Animated.View
+          style={[
+            styles.section,
+            {
+              opacity: quickAnim.opacity,
+              transform: [{ translateY: quickAnim.translateY }],
+            },
+          ]}
+        >
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
           </View>
           <View style={styles.quickGrid}>
-            <QuickAction icon={Calendar} label="Leaves" color="#4F46E5" onPress={() => navigation.navigate('Leaves')} />
-            <QuickAction icon={Briefcase} label="Directory" color="#10B981" onPress={() => navigation.navigate('Directory')} />
-            <QuickAction icon={Clock} label="History" color="#F59E0B" onPress={() => navigation.navigate('Attendance')} />
-            <QuickAction icon={CreditCard} label="Billing" color="#8B5CF6" onPress={() => navigation.navigate('Subscription')} />
+            <AnimatedQuickAction icon={Calendar} label="Leaves" color="#4F46E5" delay={0}   onPress={() => navigation.navigate('Leaves')} />
+            <AnimatedQuickAction icon={Briefcase} label="Directory" color="#10B981" delay={60}  onPress={() => navigation.navigate('Directory')} />
+            <AnimatedQuickAction icon={Clock} label="History" color="#F59E0B" delay={120} onPress={() => navigation.navigate('Attendance')} />
+            <AnimatedQuickAction icon={CreditCard} label="Billing" color="#8B5CF6" delay={180} onPress={() => navigation.navigate('Subscription')} />
           </View>
-        </View>
+        </Animated.View>
 
         {/* Recent Activity */}
-        <View style={styles.section}>
+        <Animated.View
+          style={[
+            styles.section,
+            {
+              opacity: activityAnim.opacity,
+              transform: [{ translateY: activityAnim.translateY }],
+            },
+          ]}
+        >
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Attendance')}>
@@ -427,7 +490,7 @@ const DashboardScreen = ({ navigation }) => {
               color="#4F46E5"
             />
           </View>
-        </View>
+        </Animated.View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -443,6 +506,31 @@ const QuickAction = ({ icon: Icon, label, color, onPress }) => (
     <Text style={styles.quickLabel}>{label}</Text>
   </TouchableOpacity>
 );
+
+// Animated quick action tile with independent press scale
+const AnimatedQuickAction = ({ icon: Icon, label, color, onPress, delay = 0 }) => {
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+  const onPressIn = () =>
+    Animated.spring(scaleAnim, { toValue: 0.88, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  const onPressOut = () =>
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 10 }).start();
+  return (
+    <Animated.View style={[styles.quickItem, { transform: [{ scale: scaleAnim }] }]}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        activeOpacity={1}
+        style={{ alignItems: 'center', gap: 8 }}
+      >
+        <View style={[styles.quickIconBox, { backgroundColor: color + '15' }]}>
+          <Icon size={24} color={color} strokeWidth={2.5} />
+        </View>
+        <Text style={styles.quickLabel}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 const ActivityItem = ({ icon: Icon, title, time, desc, color }) => (
   <View style={styles.activityItem}>

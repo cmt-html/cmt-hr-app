@@ -221,45 +221,64 @@ const AttendanceTime = () => {
                 <thead>
                   <tr className="text-slate-400 border-b border-slate-100 dark:border-slate-800 uppercase tracking-wider font-bold">
                     <th className="pb-3">Date</th>
-                    <th className="pb-3">Clock-In Time</th>
-                    <th className="pb-3">GPS Location</th>
-                    <th className="pb-3">Clock-Out Time</th>
+                    <th className="pb-3">Clock-In</th>
+                    <th className="pb-3">Check-In Location</th>
+                    <th className="pb-3">Clock-Out</th>
+                    <th className="pb-3">Check-Out Location</th>
                     <th className="pb-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/70 dark:divide-slate-800/80">
                   {attendanceHistory.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-6 text-center text-slate-400 italic">No attendance sessions registered this month.</td>
+                      <td colSpan="6" className="py-6 text-center text-slate-400 italic">No attendance sessions registered this month.</td>
                     </tr>
                   ) : (
-                    attendanceHistory.map((s) => (
-                      <tr key={s.id} className="text-slate-650 dark:text-slate-350">
-                        <td className="py-3.5 font-semibold">
-                          {new Date(s.checkIn || s.createdAt).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </td>
-                        <td className="py-3.5 font-mono">
-                          {new Date(s.checkIn || s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="py-3.5 flex items-center space-x-1">
-                          <MapPin size={12} className="text-slate-400" />
-                          <span>{s.checkInLocation || 'CloudMojo HQ'}</span>
-                        </td>
-                        <td className="py-3.5 font-mono">
-                          {s.checkOut 
-                            ? new Date(s.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-                            : <span className="text-amber-500 font-semibold italic">On Shift (Running)</span>
-                          }
-                        </td>
-                        <td className="py-3.5">
-                          <span className={`inline-block px-2 py-0.5 rounded font-bold text-[9px] ${
-                            s.checkOut ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
-                          }`}>
-                            {s.checkOut ? 'COMPLETED' : 'ONGOING'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                    attendanceHistory.map((s) => {
+                      // Backend stores location as "checkInLoc | checkOutLoc" after check-out
+                      const locationParts = (s.location || '').split(' | ');
+                      const checkInLoc = s.checkInLocation || locationParts[0] || '—';
+                      const checkOutLoc = s.checkOutLocation || locationParts[1] || null;
+                      return (
+                        <tr key={s.id} className="text-slate-650 dark:text-slate-350">
+                          <td className="py-3.5 font-semibold">
+                            {new Date(s.checkIn || s.createdAt).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </td>
+                          <td className="py-3.5 font-mono">
+                            {new Date(s.checkIn || s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="py-3.5">
+                            <div className="flex items-center space-x-1">
+                              <MapPin size={12} className="text-emerald-500 shrink-0" />
+                              <span className="text-slate-600 dark:text-slate-300 truncate max-w-[130px]" title={checkInLoc}>{checkInLoc}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 font-mono">
+                            {s.checkOut 
+                              ? new Date(s.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                              : <span className="text-amber-500 font-semibold italic">On Shift…</span>
+                            }
+                          </td>
+                          <td className="py-3.5">
+                            {s.checkOut ? (
+                              <div className="flex items-center space-x-1">
+                                <MapPin size={12} className="text-rose-400 shrink-0" />
+                                <span className="text-slate-600 dark:text-slate-300 truncate max-w-[130px]" title={checkOutLoc || '—'}>{checkOutLoc || '—'}</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-600 italic text-[10px]">Not yet</span>
+                            )}
+                          </td>
+                          <td className="py-3.5">
+                            <span className={`inline-block px-2 py-0.5 rounded font-bold text-[9px] ${
+                              s.checkOut ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+                            }`}>
+                              {s.checkOut ? 'COMPLETED' : 'ONGOING'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -461,7 +480,7 @@ const AttendanceTime = () => {
                   className="w-full p-3 bg-slate-50 border border-slate-150 rounded-xl outline-none text-[13px] text-slate-850 dark:bg-slate-850 dark:border-slate-750 dark:text-slate-100"
                 >
                   <option value="CloudMojo Corporate Portal">CloudMojo Corporate Portal (Internal)</option>
-                  <option value="Zoho HR Premium Replica Suite">Zoho HR Premium Replica Suite</option>
+                  <option value="CMT HR Premium Replica Suite">CMT HR Premium Replica Suite</option>
                   <option value="Mobile Application Upgrade">Mobile Application Upgrade (React Native)</option>
                 </select>
               </div>

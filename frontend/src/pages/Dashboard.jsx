@@ -157,7 +157,7 @@ const Dashboard = () => {
         <div className="relative z-10 space-y-2.5">
           <div className="inline-flex items-center space-x-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-xs font-semibold">
             <Sparkles size={12} />
-            <span>Zoho Workspace Sync Complete</span>
+            <span>CMT Workspace Sync Complete</span>
           </div>
           <h2 className="text-3xl font-outfit font-extrabold tracking-tight md:text-4xl">
             Welcome back, {user?.firstName}!
@@ -227,7 +227,7 @@ const Dashboard = () => {
         {/* Left Side Column: Clocking Widget & Charts */}
         <div className="lg:col-span-8 space-y-8">
           
-          {/* Zoho Shift Clock-In/Clock-Out Widget */}
+          {/* CMT Shift Clock-In/Clock-Out Widget */}
           <div className="bg-white border border-slate-100 rounded-3xl p-6 dark:bg-slate-900 dark:border-slate-800 shadow-sm">
             <div className="border-b border-slate-100 pb-4 mb-6 dark:border-slate-800 flex items-center justify-between">
               <div>

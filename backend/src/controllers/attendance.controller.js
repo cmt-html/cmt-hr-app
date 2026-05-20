@@ -1,6 +1,31 @@
 const mongoose = require('mongoose');
 const { Attendance, User } = require('../services/db.service');
 
+// Auto-close any uncompleted active sessions from previous days
+const closePriorSessions = async (userId) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const priorSessions = await Attendance.find({
+      userId,
+      checkOut: null,
+      checkIn: { $lt: startOfToday }
+    });
+
+    for (const session of priorSessions) {
+      // Auto check-out at checkIn + 9 hours (representing a standard shift length)
+      const autoCheckOutTime = new Date(session.checkIn.getTime() + 9 * 60 * 60 * 1000);
+      session.checkOut = autoCheckOutTime;
+      session.status = 'PRESENT';
+      await session.save();
+      console.log(`[Auto-Checkout] Closed prior uncompleted session ${session._id} for user ${userId} starting at ${session.checkIn}`);
+    }
+  } catch (error) {
+    console.error('Error closing prior uncompleted sessions:', error);
+  }
+};
+
 // ── Check-In ────────────────────────────────────────────────────────────────
 exports.checkIn = async (req, res) => {
   try {
@@ -10,6 +35,9 @@ exports.checkIn = async (req, res) => {
     if (!userId || !mongoose.isValidObjectId(userId)) {
       return res.status(400).json({ message: 'Valid userId is required.' });
     }
+
+    // Clear prior day's unclosed sessions first
+    await closePriorSessions(userId);
 
     // Prevent double check-in
     const activeSession = await Attendance.findOne({ userId, checkOut: null });
@@ -62,6 +90,9 @@ exports.checkOut = async (req, res) => {
       return res.status(400).json({ message: 'Valid userId is required.' });
     }
 
+    // Clear prior day's unclosed sessions first
+    await closePriorSessions(userId);
+
     const attendance = await Attendance.findOne({ userId, checkOut: null }).sort({ checkIn: -1 });
     if (!attendance) {
       return res.status(404).json({ message: 'No active check-in session found.' });
@@ -90,6 +121,9 @@ exports.getAttendanceHistory = async (req, res) => {
     if (!mongoose.isValidObjectId(userId)) {
       return res.status(400).json({ message: 'Invalid userId format' });
     }
+
+    // Clear prior day's unclosed sessions first
+    await closePriorSessions(userId);
 
     const history = await Attendance.find({ userId })
       .sort({ checkIn: -1 })

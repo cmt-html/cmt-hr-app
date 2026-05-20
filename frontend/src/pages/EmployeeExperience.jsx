@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { 
@@ -56,10 +56,22 @@ const EmployeeExperience = () => {
 
   // AI Chatbot State
   const [chatMessages, setChatMessages] = useState([
-    { sender: 'AI', text: "Hello! I am your **CloudMojo HR Assistant**. I can help you with:\n\n1. **Leave Balances**: type *'How many sick leaves do I have?'*\n2. **Holiday Calendar**: type *'Show company holidays'*\n3. **Working Hours**: type *'What are standard office timings?'*\n4. **HR Policy Documents**: type *'Show travel policy'*\n\nAsk me any of these questions!" }
+    { sender: 'AI', text: "Hello! I am your **CloudMojo HR Assistant**. I can help you with:\n\n1. 🩺 **Leave Balances**: type *'How many sick leaves do I have?'*\n2. 📅 **Holiday Calendar**: type *'Show company holidays'*\n3. 🕒 **Working Hours**: type *'What are standard office timings?'*\n4. 📄 **HR Policy Documents**: type *'Show travel policy'*\n5. ⏱️ **Log Timesheets**: type *'log 8 hours on Project Name'*\n\nAsk me any of these questions or click one of the quick chips below!" }
   ]);
   const [chatbotInput, setChatbotInput] = useState('');
   const [botTyping, setBotTyping] = useState(false);
+
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (activeTab === 'AI_CHATBOT') {
+      scrollToBottom();
+    }
+  }, [chatMessages, botTyping, activeTab]);
 
   const loadData = async () => {
     try {
@@ -184,25 +196,34 @@ const EmployeeExperience = () => {
     }
   };
 
-  const handleChatSubmit = async (e) => {
-    e.preventDefault();
-    if (!chatbotInput.trim()) return;
+  const submitChatQuery = async (queryText) => {
+    if (!queryText.trim()) return;
 
-    const userText = chatbotInput;
-    setChatMessages(prev => [...prev, { sender: 'USER', text: userText }]);
-    setChatbotInput('');
+    setChatMessages(prev => [...prev, { sender: 'USER', text: queryText }]);
     setBotTyping(true);
 
     try {
-      const res = await api.chatbot.ask(userText, user.id);
+      const res = await api.chatbot.ask(queryText, user.id);
       setTimeout(() => {
         setChatMessages(prev => [...prev, { sender: 'AI', text: res.data.reply }]);
         setBotTyping(false);
-      }, 500);
+        if (res.data.reply && res.data.reply.includes('⏱️')) {
+          confetti({ particleCount: 80, spread: 60 });
+          loadData();
+        }
+      }, 600);
     } catch (err) {
       setChatMessages(prev => [...prev, { sender: 'AI', text: "Sorry, I'm experiencing some policy processing fatigue." }]);
       setBotTyping(false);
     }
+  };
+
+  const handleChatSubmit = async (e) => {
+    e.preventDefault();
+    if (!chatbotInput.trim()) return;
+    const inputVal = chatbotInput;
+    setChatbotInput('');
+    await submitChatQuery(inputVal);
   };
 
   return (
@@ -493,73 +514,105 @@ const EmployeeExperience = () => {
       {/* ==========================================
                   AI FAQ CHATBOT TAB
          ========================================== */}
-      {activeTab === 'AI_CHATBOT' && (
-        <div className="bg-white border border-slate-100 rounded-3xl p-6 dark:bg-slate-900 dark:border-slate-800 shadow-sm max-w-2xl mx-auto space-y-6">
-          <div className="border-b border-slate-100 pb-4 dark:border-slate-800 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
-                <Bot size={20} className="animate-pulse" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-850 dark:text-white font-outfit">FAQ AI Assistant</h3>
-                <p className="text-[12px] text-slate-400">Ask about leaves balance, shift details, and company policy handbook links.</p>
+      {activeTab === 'AI_CHATBOT' && (() => {
+        const QUICK_CHIPS = [
+          { label: '🩺 Leave Balance', query: 'How many sick leaves do I have?' },
+          { label: '📅 Official Holidays', query: 'Show company holidays calendar' },
+          { label: '🕒 Shift Timings', query: 'What are standard office shift timings?' },
+          { label: '📄 HR Policy Docs', query: 'Show travel policy handbook' },
+          { label: '⏱️ Log 8 Hrs', query: 'log 8 hours on CMT HR Premium Replica Suite' }
+        ];
+
+        return (
+          <div className="glass-panel rounded-3xl p-6 shadow-xl max-w-2xl mx-auto space-y-6 animate-slide-in relative overflow-hidden border border-white/20 dark:border-slate-800/80">
+            <div className="border-b border-slate-100 pb-4 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-650 to-purple-600 text-white shadow-md shadow-indigo-600/20">
+                  <Bot size={20} className="animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-850 dark:text-white font-outfit flex items-center gap-1.5">
+                    FAQ AI Assistant <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                  </h3>
+                  <p className="text-[12px] text-slate-400">Ask about leaves balance, shift details, and company policy handbook links.</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Scrolling message logs */}
-          <div className="h-[350px] overflow-y-auto p-4 bg-slate-50 border border-slate-150 rounded-2xl dark:bg-slate-850 dark:border-slate-750 space-y-4 flex flex-col">
-            {chatMessages.map((msg, i) => {
-              const isAI = msg.sender === 'AI';
-              return (
-                <div 
-                  key={i} 
-                  className={`flex ${isAI ? 'justify-start' : 'justify-end'}`}
-                >
-                  <div className={`p-4 max-w-[85%] rounded-2xl text-[12.5px] leading-relaxed shadow-sm font-outfit whitespace-pre-line ${
-                    isAI 
-                      ? 'bg-white border border-slate-200/50 text-slate-800 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200' 
-                      : 'bg-indigo-650 text-white'
-                  }`}>
-                    {msg.text}
+            {/* Scrolling message logs */}
+            <div className="h-[350px] overflow-y-auto p-4 bg-slate-50/50 border border-slate-150 rounded-2xl dark:bg-slate-850/40 dark:border-slate-750/60 space-y-4 flex flex-col shadow-inner">
+              {chatMessages.map((msg, i) => {
+                const isAI = msg.sender === 'AI';
+                return (
+                  <div 
+                    key={i} 
+                    className={`flex ${isAI ? 'justify-start' : 'justify-end'} message-appear`}
+                  >
+                    <div className={`p-4 max-w-[85%] rounded-2xl text-[12.5px] leading-relaxed shadow-sm font-outfit whitespace-pre-line ${
+                      isAI 
+                        ? 'bg-white border border-slate-200/50 text-slate-800 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200' 
+                        : 'bg-indigo-650 text-white shadow-md shadow-indigo-600/10'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {botTyping && (
+                <div className="flex justify-start message-appear">
+                  <div className="bg-white border border-slate-200/50 p-4 rounded-2xl dark:bg-slate-900 dark:border-slate-800 shadow-sm">
+                    <div className="flex space-x-1.5 items-center py-1">
+                      <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
+              )}
+              <div ref={messagesEndRef} />
+            </div>
 
-            {botTyping && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-slate-200/50 p-4 rounded-2xl dark:bg-slate-900 dark:border-slate-800">
-                  <div className="flex space-x-1.5">
-                    <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce"></div>
-                    <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce delay-100"></div>
-                    <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce delay-200"></div>
-                  </div>
-                </div>
+            {/* Quick-reply chips */}
+            <div className="space-y-2 pt-2">
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center font-outfit">
+                <Sparkles size={12} className="text-indigo-500 mr-1.5 animate-pulse" /> Interactive Quick Chips
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_CHIPS.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => submitChatQuery(chip.query)}
+                    className="px-3.5 py-2 text-[12px] bg-slate-100/80 hover:bg-indigo-50 border border-slate-200/40 text-slate-650 hover:text-indigo-650 rounded-full font-medium transition-all hover:scale-105 active:scale-95 cursor-pointer dark:bg-slate-800/50 dark:border-slate-750 dark:text-slate-300 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-300 flex items-center gap-1.5 shadow-sm font-outfit"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+
+            {/* Chat Form */}
+            <form onSubmit={handleChatSubmit} className="flex gap-2 pt-2">
+              <input
+                type="text"
+                required
+                placeholder="Ask me: 'How many leaves do I have?' or 'Show company holidays'..."
+                value={chatbotInput}
+                onChange={(e) => setChatbotInput(e.target.value)}
+                className="flex-1 p-3.5 bg-slate-50 border border-slate-150 rounded-xl outline-none text-[13px] text-slate-800 dark:bg-slate-850 dark:border-slate-750 dark:text-slate-100 transition-all focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900"
+              />
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 rounded-xl cursor-pointer flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-md shadow-indigo-600/10"
+              >
+                <Send size={16} />
+              </button>
+            </form>
+
           </div>
-
-          {/* Chat Form */}
-          <form onSubmit={handleChatSubmit} className="flex gap-2">
-            <input
-              type="text"
-              required
-              placeholder="Ask me: 'How many leaves do I have?' or 'Show company holidays'..."
-              value={chatbotInput}
-              onChange={(e) => setChatbotInput(e.target.value)}
-              className="flex-1 p-3.5 bg-slate-50 border border-slate-150 rounded-xl outline-none text-[13px] text-slate-800 dark:bg-slate-850 dark:border-slate-750 dark:text-slate-100"
-            />
-            <button
-              type="submit"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 rounded-xl cursor-pointer flex items-center justify-center"
-            >
-              <Send size={16} />
-            </button>
-          </form>
-
-        </div>
-      )}
+        );
+      })()}
 
       {/* ==========================================
                 ANNOUNCEMENT PUBLISH MODAL

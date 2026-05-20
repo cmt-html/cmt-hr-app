@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -8,8 +8,11 @@ import {
   StatusBar, 
   Platform, 
   Dimensions, 
-  ActivityIndicator 
+  ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
+import { staggerEntrance, makeEntranceValues } from '../utils/animations';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { 
@@ -35,38 +38,59 @@ const LocationDisplay = ({ location, colors }) => {
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
+    let isMounted = true;
     const resolveAddress = async () => {
+      if (!location) {
+        if (isMounted) setAddress('-');
+        return;
+      }
       const coordsRegex = /^-?\d+\.\d+,\s*-?\d+\.\d+$/;
       if (coordsRegex.test(location)) {
-        setLoading(true);
+        if (isMounted) {
+          setLoading(true);
+          setAddress(location); // set fallback immediately
+        }
         try {
           const [lat, lon] = location.split(',').map(s => parseFloat(s.trim()));
-          const reverseGeocodedAddress = await Location.reverseGeocodeAsync({
+          
+          // Timeout promise
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Geocode timeout')), 3000)
+          );
+          
+          const geocodePromise = Location.reverseGeocodeAsync({
             latitude: lat,
             longitude: lon
           });
           
-          if (reverseGeocodedAddress.length > 0) {
+          const reverseGeocodedAddress = await Promise.race([geocodePromise, timeoutPromise]);
+          
+          if (isMounted && reverseGeocodedAddress && reverseGeocodedAddress.length > 0) {
             const addr = reverseGeocodedAddress[0];
-            const formatted = `${addr.name || ''}, ${addr.street || ''}, ${addr.city || ''}`.replace(/^, |, $/g, '').replace(/, , /g, ', ');
+            const formatted = `${addr.name || ''}, ${addr.street || ''}, ${addr.city || ''}`.replace(/^, |, $/g, '').replace(/, , /g, ', ').replace(/^,\s*/, '').replace(/,\s*$/, '');
             setAddress(formatted || location);
           }
         } catch (e) {
           console.warn('Failed to resolve address on details:', e);
+          if (isMounted) setAddress(location);
         } finally {
-          setLoading(false);
+          if (isMounted) setLoading(false);
         }
       } else {
-        setAddress(location);
+        if (isMounted) setAddress(location);
       }
     };
     resolveAddress();
+    return () => { isMounted = false; };
   }, [location]);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, justifyContent: 'center' }}>
       {loading ? (
-        <ActivityIndicator size="small" color={colors.primary} style={{ alignSelf: 'flex-start' }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={{ fontSize: 12, color: colors.textLight }}>Locating...</Text>
+        </View>
       ) : (
         <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>{address}</Text>
       )}
@@ -111,8 +135,17 @@ const AttendanceScreen = ({ navigation, route }) => {
   const [attendanceData, setAttendanceData] = useState({});
   const [loading, setLoading] = useState(true);
 
+  // ── Entrance animation for header stats ───────────────────────────────────
+  const statsAnim  = useRef(makeEntranceValues(30)).current;
+  const calAnim    = useRef(makeEntranceValues(30)).current;
+
+  // ── Detail panel slide-in ──────────────────────────────────────────────
+  const detailOpacity  = useRef(new Animated.Value(1)).current;
+  const detailTranslateX = useRef(new Animated.Value(0)).current;
+
   React.useEffect(() => {
     fetchHistory();
+    staggerEntrance([statsAnim, calAnim], 120, 420);
   }, [targetUserId]);
 
   const fetchHistory = async () => {
@@ -204,6 +237,34 @@ const AttendanceScreen = ({ navigation, route }) => {
     });
   };
 
+  // Animate detail panel whenever the selected date changes
+  const handleSelectDate = (dateStr) => {
+    if (!dateStr) return;
+    // Slide out left quickly, then swap data and slide in from right
+    Animated.timing(detailOpacity, {
+      toValue: 0,
+      duration: 120,
+      useNativeDriver: true,
+    }).start(() => {
+      setSelectedDate(dateStr);
+      detailTranslateX.setValue(40);
+      Animated.parallel([
+        Animated.timing(detailOpacity, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(detailTranslateX, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+      ]).start();
+    });
+  };
+
   const selectedData = attendanceData[selectedDate] || { status: 'NO_DATA', checkIn: '-', checkOut: '-', location: '-' };
 
   return (
@@ -235,7 +296,12 @@ const AttendanceScreen = ({ navigation, route }) => {
         </LinearGradient>
         
         {/* Floating Summary Stats */}
-        <View style={styles.summaryFloating}>
+        <Animated.View
+          style={[
+            styles.summaryFloating,
+            { opacity: statsAnim.opacity, transform: [{ translateY: statsAnim.translateY }] },
+          ]}
+        >
           <View style={styles.summaryItem}>
             <View style={[styles.statDot, { backgroundColor: colors.success }]} />
             <Text style={styles.statVal}>
@@ -259,7 +325,7 @@ const AttendanceScreen = ({ navigation, route }) => {
             </Text>
             <Text style={styles.statLabel}>Absent</Text>
           </View>
-        </View>
+        </Animated.View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -271,7 +337,12 @@ const AttendanceScreen = ({ navigation, route }) => {
         ) : (
           <>
             {/* Calendar Card */}
-            <View style={styles.calendarCard}>
+            <Animated.View
+              style={[
+                styles.calendarCard,
+                { opacity: calAnim.opacity, transform: [{ translateY: calAnim.translateY }] },
+              ]}
+            >
               <View style={styles.calendarHeader}>
                 <View style={styles.monthLabel}>
                   <CalendarIcon size={18} color={colors.primary} />
@@ -299,122 +370,111 @@ const AttendanceScreen = ({ navigation, route }) => {
                   const status = attendanceData[item.dateStr]?.status;
                   
                   return (
-                    <TouchableOpacity 
+                    <AnimatedDayItem
                       key={index}
-                      style={[
-                        styles.dayItem,
-                        isSelected && styles.selectedDayItem
-                      ]}
-                      onPress={() => item.dateStr && setSelectedDate(item.dateStr)}
-                      disabled={!item.day}
-                    >
-                      {item.day && (
-                        <>
-                          <Text style={[
-                            styles.dayText,
-                            isSelected && { color: '#FFFFFF' }
-                          ]}>
-                            {item.day}
-                          </Text>
-                          {status && (
-                            <View style={[
-                              styles.statusIndicator,
-                              { backgroundColor: status === 'PRESENT' ? colors.success : status === 'LATE' ? colors.warning : colors.error },
-                              isSelected && { borderColor: '#FFFFFF', borderWidth: 1 }
-                            ]} />
-                          )}
-                        </>
-                      )}
-                    </TouchableOpacity>
+                      item={item}
+                      isSelected={isSelected}
+                      status={status}
+                      colors={colors}
+                      styles={styles}
+                      onPress={handleSelectDate}
+                    />
                   );
                 })}
               </View>
-            </View>
+            </Animated.View>
 
             {/* Selected Date Details */}
-            <View style={styles.detailsHeader}>
-              <Text style={styles.detailsTitle}>Day Activity</Text>
-              <View style={styles.dateBadge}>
-                <Text style={styles.dateBadgeText}>
-                  {(() => {
-                    const d = parseSafeDate(selectedDate);
-                    return d ? d.toDateString() : '-';
-                  })()}
-                </Text>
+            <Animated.View
+              style={{
+                opacity: detailOpacity,
+                transform: [{ translateX: detailTranslateX }],
+              }}
+            >
+              <View style={styles.detailsHeader}>
+                <Text style={styles.detailsTitle}>Day Activity</Text>
+                <View style={styles.dateBadge}>
+                  <Text style={styles.dateBadgeText}>
+                    {(() => {
+                      const d = parseSafeDate(selectedDate);
+                      return d ? d.toDateString() : '-';
+                    })()}
+                  </Text>
+                </View>
               </View>
-            </View>
 
-            {selectedData.status === 'NO_DATA' ? (
-              <View style={styles.noDataCard}>
-                <AlertCircle size={32} color={colors.textLight} strokeWidth={1.5} />
-                <Text style={styles.noDataText}>No records found for this date.</Text>
-                <TouchableOpacity 
-                  style={styles.regularizeBtn}
-                  onPress={() => navigation.navigate('Regularize', { prefillDate: selectedDate })}
-                >
-                  <Text style={styles.regularizeBtnText}>Apply Regularization</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.dataCard}>
-                <View style={styles.statusRow}>
-                  <View style={[styles.badge, { backgroundColor: selectedData.status === 'PRESENT' ? '#ECFDF5' : '#FFFBEB' }]}>
-                    <View style={[styles.badgeDot, { backgroundColor: selectedData.status === 'PRESENT' ? colors.success : colors.warning }]} />
-                    <Text style={[styles.badgeText, { color: selectedData.status === 'PRESENT' ? '#065F46' : '#92400E' }]}>
-                      {selectedData.status}
-                    </Text>
-                  </View>
-                  {selectedData.status !== 'PRESENT' && (
-                    <TouchableOpacity onPress={() => navigation.navigate('Regularize', { prefillDate: selectedDate })}>
-                      <Text style={styles.inlineAction}>Update Details?</Text>
-                    </TouchableOpacity>
-                  )}
+              {selectedData.status === 'NO_DATA' ? (
+                <View style={styles.noDataCard}>
+                  <AlertCircle size={32} color={colors.textLight} strokeWidth={1.5} />
+                  <Text style={styles.noDataText}>No records found for this date.</Text>
+                  <TouchableOpacity 
+                    style={styles.regularizeBtn}
+                    onPress={() => navigation.navigate('Regularize', { prefillDate: selectedDate })}
+                  >
+                    <Text style={styles.regularizeBtnText}>Apply Regularization</Text>
+                  </TouchableOpacity>
                 </View>
+              ) : (
+                <View style={styles.dataCard}>
+                  <View style={styles.statusRow}>
+                    <View style={[styles.badge, { backgroundColor: selectedData.status === 'PRESENT' ? '#ECFDF5' : '#FFFBEB' }]}>
+                      <View style={[styles.badgeDot, { backgroundColor: selectedData.status === 'PRESENT' ? colors.success : colors.warning }]} />
+                      <Text style={[styles.badgeText, { color: selectedData.status === 'PRESENT' ? '#065F46' : '#92400E' }]}>
+                        {selectedData.status}
+                      </Text>
+                    </View>
+                    {selectedData.status !== 'PRESENT' && (
+                      <TouchableOpacity onPress={() => navigation.navigate('Regularize', { prefillDate: selectedDate })}>
+                        <Text style={styles.inlineAction}>Update Details?</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
 
-                <View style={styles.infoRow}>
-                  <View style={styles.infoCol}>
-                    <View style={styles.infoIconBox}>
-                      <Clock size={16} color={colors.primary} />
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoCol}>
+                      <View style={styles.infoIconBox}>
+                        <Clock size={16} color={colors.primary} />
+                      </View>
+                      <View>
+                        <Text style={styles.infoLabel}>IN TIME</Text>
+                        <Text style={styles.infoValue}>{selectedData.checkIn}</Text>
+                      </View>
                     </View>
-                    <View>
-                      <Text style={styles.infoLabel}>IN TIME</Text>
-                      <Text style={styles.infoValue}>{selectedData.checkIn}</Text>
+                    <View style={styles.infoCol}>
+                      <View style={styles.infoIconBox}>
+                        <Clock size={16} color={colors.primary} />
+                      </View>
+                      <View>
+                        <Text style={styles.infoLabel}>OUT TIME</Text>
+                        <Text style={styles.infoValue}>{selectedData.checkOut}</Text>
+                      </View>
                     </View>
                   </View>
-                  <View style={styles.infoCol}>
-                    <View style={styles.infoIconBox}>
-                      <Clock size={16} color={colors.primary} />
-                    </View>
-                    <View>
-                      <Text style={styles.infoLabel}>OUT TIME</Text>
-                      <Text style={styles.infoValue}>{selectedData.checkOut}</Text>
-                    </View>
-                  </View>
-                </View>
 
-                <View style={styles.locationBox}>
-                  <View style={styles.infoIconBox}>
-                    <MapPin size={16} color={colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.infoLabel}>CHECK-IN LOCATION</Text>
-                    <LocationDisplay location={selectedData.location} colors={colors} />
-                  </View>
-                </View>
-
-                {selectedData.checkOutLocation ? (
-                  <View style={[styles.locationBox, { marginTop: 12 }]}>
+                  <View style={styles.locationBox}>
                     <View style={styles.infoIconBox}>
                       <MapPin size={16} color={colors.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.infoLabel}>CHECK-OUT LOCATION</Text>
-                      <LocationDisplay location={selectedData.checkOutLocation} colors={colors} />
+                      <Text style={styles.infoLabel}>CHECK-IN LOCATION</Text>
+                      <LocationDisplay location={selectedData.location} colors={colors} />
                     </View>
                   </View>
-                ) : null}
-              </View>
-            )}
+
+                  {selectedData.checkOutLocation ? (
+                    <View style={[styles.locationBox, { marginTop: 12 }]}>
+                      <View style={styles.infoIconBox}>
+                        <MapPin size={16} color={colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.infoLabel}>CHECK-OUT LOCATION</Text>
+                        <LocationDisplay location={selectedData.checkOutLocation} colors={colors} />
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              )}
+            </Animated.View>
           </>
         )}
       </ScrollView>
@@ -741,6 +801,69 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     borderRadius: 16,
   },
 });
+
+/**
+ * Individual calendar day with spring scale press animation.
+ */
+const AnimatedDayItem = ({ item, isSelected, status, colors, styles, onPress }) => {
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    if (!item.day) return;
+    Animated.spring(scaleAnim, {
+      toValue: 0.82,
+      useNativeDriver: true,
+      speed: 60,
+      bounciness: 0,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 12,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={[styles.dayItem, isSelected && styles.selectedDayItem]}
+        onPress={() => onPress(item.dateStr)}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={!item.day}
+        activeOpacity={1}
+      >
+        {item.day && (
+          <>
+            <Text style={[styles.dayText, isSelected && { color: '#FFFFFF' }]}>
+              {item.day}
+            </Text>
+            {status && (
+              <View
+                style={[
+                  styles.statusIndicator,
+                  {
+                    backgroundColor:
+                      status === 'PRESENT'
+                        ? colors.success
+                        : status === 'LATE'
+                        ? colors.warning
+                        : colors.error,
+                  },
+                  isSelected && { borderColor: '#FFFFFF', borderWidth: 1 },
+                ]}
+              />
+            )}
+          </>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 export default AttendanceScreen;
 

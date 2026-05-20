@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
+  Animated,
+  Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -18,6 +20,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { authService } from '../services/api.service';
 import { Mail, Lock, ChevronRight, Sparkles } from 'lucide-react-native';
 import CloudMojoLogo from '../components/CloudMojoLogo';
+import { staggerEntrance, makeEntranceValues, makePressScale } from '../utils/animations';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const LOGO_W = Math.min(SCREEN_W - 56, 200);
@@ -30,14 +33,80 @@ const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
 
+  // ── Entrance animation values ──────────────────────────────────────────────
+  const logoAnim   = useRef(makeEntranceValues(40)).current;
+  const pillAnim   = useRef(makeEntranceValues(30)).current;
+  const titleAnim  = useRef(makeEntranceValues(30)).current;
+  const subAnim    = useRef(makeEntranceValues(25)).current;
+  const cardAnim   = useRef(makeEntranceValues(40)).current;
+  const footerAnim = useRef(makeEntranceValues(20)).current;
+
+  // ── Orb parallax float ────────────────────────────────────────────────────
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  // ── Button press scale ────────────────────────────────────────────────────
+  const { scale: btnScale, pressIn: btnPressIn, pressOut: btnPressOut } = useRef(makePressScale(0.96)).current;
+
+  // ── Input focus scale ─────────────────────────────────────────────────────
+  const emailScale    = useRef(new Animated.Value(1)).current;
+  const passwordScale = useRef(new Animated.Value(1)).current;
+
   const styles = getStyles(colors, TITLE_SIZE);
+
+  useEffect(() => {
+    // Staggered entrance
+    staggerEntrance(
+      [logoAnim, pillAnim, titleAnim, subAnim, cardAnim, footerAnim],
+      100,
+      480
+    );
+
+    // Orb float loop
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 4000,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 4000,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const handleFocus = (field) => {
+    setFocusedField(field);
+    const scaleVal = field === 'email' ? emailScale : passwordScale;
+    Animated.spring(scaleVal, {
+      toValue: 1.02,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handleBlur = (field) => {
+    setFocusedField(null);
+    const scaleVal = field === 'email' ? emailScale : passwordScale;
+    Animated.spring(scaleVal, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 0,
+    }).start();
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
       alert('Please enter your work email and password.');
       return;
     }
-
     setLoading(true);
     try {
       await authService.login(email.trim(), password);
@@ -51,6 +120,11 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
+  const orbTranslateY = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -18],
+  });
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -62,8 +136,26 @@ const LoginScreen = ({ navigation }) => {
         end={{ x: 0.75, y: 1 }}
       />
 
-      <View style={[styles.orb, styles.orbTop]} />
-      <View style={[styles.orb, styles.orbBottom]} />
+      {/* Animated floating orbs */}
+      <Animated.View
+        style={[styles.orb, styles.orbTop, { transform: [{ translateY: orbTranslateY }] }]}
+      />
+      <Animated.View
+        style={[
+          styles.orb,
+          styles.orbBottom,
+          {
+            transform: [
+              {
+                translateY: floatAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 14],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
@@ -76,101 +168,172 @@ const LoginScreen = ({ navigation }) => {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {/* Hero */}
             <View style={styles.hero}>
-              <View style={styles.logoWrap}>
+              <Animated.View
+                style={[
+                  styles.logoWrap,
+                  {
+                    opacity: logoAnim.opacity,
+                    transform: [{ translateY: logoAnim.translateY }],
+                  },
+                ]}
+              >
                 <CloudMojoLogo size={LOGO_W * 0.4} />
-              </View>
+              </Animated.View>
 
-              <View style={styles.pillRow}>
+              <Animated.View
+                style={[
+                  styles.pillRow,
+                  {
+                    opacity: pillAnim.opacity,
+                    transform: [{ translateY: pillAnim.translateY }],
+                  },
+                ]}
+              >
                 <Sparkles size={14} color={colors.secondary} />
                 <Text style={styles.pillText}>AI-Powered HR Suite</Text>
-              </View>
+              </Animated.View>
 
-              <Text style={styles.title}>Welcome back</Text>
-              <Text style={styles.subtitle}>
+              <Animated.Text
+                style={[
+                  styles.title,
+                  {
+                    opacity: titleAnim.opacity,
+                    transform: [{ translateY: titleAnim.translateY }],
+                  },
+                ]}
+              >
+                Welcome back
+              </Animated.Text>
+
+              <Animated.Text
+                style={[
+                  styles.subtitle,
+                  {
+                    opacity: subAnim.opacity,
+                    transform: [{ translateY: subAnim.translateY }],
+                  },
+                ]}
+              >
                 The intelligent way to manage your modern workforce.
-              </Text>
+              </Animated.Text>
             </View>
 
-            <View
+            {/* Card */}
+            <Animated.View
               style={[
                 styles.card,
                 {
                   backgroundColor: colors.authGlass,
                   borderColor: colors.authGlassBorder,
+                  opacity: cardAnim.opacity,
+                  transform: [{ translateY: cardAnim.translateY }],
                 },
               ]}
             >
               <Text style={styles.cardTitle}>Secure Login</Text>
 
-              <View
-                style={[styles.inputWrap, focusedField === 'email' && styles.inputWrapFocused]}
-              >
-                <Mail
-                  size={20}
-                  color={focusedField === 'email' ? colors.secondary : 'rgba(255,255,255,0.45)'}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Work email"
-                  placeholderTextColor="rgba(255,255,255,0.38)"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  onFocus={() => setFocusedField('email')}
-                  onBlur={() => setFocusedField(null)}
-                />
-              </View>
+              {/* Email input with focus scale */}
+              <Animated.View style={{ transform: [{ scale: emailScale }] }}>
+                <View
+                  style={[
+                    styles.inputWrap,
+                    focusedField === 'email' && styles.inputWrapFocused,
+                  ]}
+                >
+                  <Mail
+                    size={20}
+                    color={
+                      focusedField === 'email'
+                        ? colors.secondary
+                        : 'rgba(255,255,255,0.45)'
+                    }
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Work email"
+                    placeholderTextColor="rgba(255,255,255,0.38)"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onFocus={() => handleFocus('email')}
+                    onBlur={() => handleBlur('email')}
+                  />
+                </View>
+              </Animated.View>
 
-              <View
-                style={[styles.inputWrap, focusedField === 'password' && styles.inputWrapFocused]}
-              >
-                <Lock
-                  size={20}
-                  color={focusedField === 'password' ? colors.secondary : 'rgba(255,255,255,0.45)'}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  placeholderTextColor="rgba(255,255,255,0.38)"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  onFocus={() => setFocusedField('password')}
-                  onBlur={() => setFocusedField(null)}
-                />
-              </View>
+              {/* Password input with focus scale */}
+              <Animated.View style={{ transform: [{ scale: passwordScale }] }}>
+                <View
+                  style={[
+                    styles.inputWrap,
+                    focusedField === 'password' && styles.inputWrapFocused,
+                  ]}
+                >
+                  <Lock
+                    size={20}
+                    color={
+                      focusedField === 'password'
+                        ? colors.secondary
+                        : 'rgba(255,255,255,0.45)'
+                    }
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    placeholderTextColor="rgba(255,255,255,0.38)"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    onFocus={() => handleFocus('password')}
+                    onBlur={() => handleBlur('password')}
+                  />
+                </View>
+              </Animated.View>
 
               <TouchableOpacity style={styles.forgotBtn} activeOpacity={0.7}>
                 <Text style={styles.forgotText}>Forgot password?</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.primaryBtnOuter}
-                onPress={handleLogin}
-                disabled={loading}
-                activeOpacity={0.9}
-              >
-                <LinearGradient
-                  colors={colors.primaryGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.primaryBtnGradient, loading && { opacity: 0.92 }]}
+              {/* Animated press-scale login button */}
+              <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+                <TouchableOpacity
+                  style={styles.primaryBtnOuter}
+                  onPress={handleLogin}
+                  onPressIn={btnPressIn}
+                  onPressOut={btnPressOut}
+                  disabled={loading}
+                  activeOpacity={1}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Text style={styles.primaryBtnText}>Continue</Text>
-                      <ChevronRight size={20} color="#FFFFFF" style={styles.primaryBtnChevron} />
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
+                  <LinearGradient
+                    colors={colors.primaryGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[
+                      styles.primaryBtnGradient,
+                      loading && { opacity: 0.92 },
+                    ]}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Text style={styles.primaryBtnText}>Continue</Text>
+                        <ChevronRight
+                          size={20}
+                          color="#FFFFFF"
+                          style={styles.primaryBtnChevron}
+                        />
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
 
               <TouchableOpacity
                 style={styles.registerLink}
@@ -178,12 +341,24 @@ const LoginScreen = ({ navigation }) => {
                 activeOpacity={0.8}
               >
                 <Text style={styles.registerLinkText}>
-                  New here? <Text style={styles.registerAction}>Create organization</Text>
+                  New here?{' '}
+                  <Text style={styles.registerAction}>Create organization</Text>
                 </Text>
               </TouchableOpacity>
-            </View>
+            </Animated.View>
 
-            <Text style={styles.footer}>Trusted by 500+ Enterprises</Text>
+            {/* Footer */}
+            <Animated.Text
+              style={[
+                styles.footer,
+                {
+                  opacity: footerAnim.opacity,
+                  transform: [{ translateY: footerAnim.translateY }],
+                },
+              ]}
+            >
+              Trusted by 500+ Enterprises
+            </Animated.Text>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

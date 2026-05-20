@@ -1,6 +1,6 @@
-# CloudMojo Zoho HRMS Replica 🚀
+# CloudMojo CMT HRMS Suite 🚀
 
-A premium, comprehensive Human Resource Management System (HRMS) replicating the core features, logical workflows, and executive user experience of Zoho HR.
+A premium, comprehensive Human Resource Management System (HRMS) inspired by the core features, logical workflows, and executive user experience of CMT HR.
 
 Built with **React (Vite) + Tailwind CSS + Lucide Icons + Recharts** on the frontend, and a **Node.js Express + Prisma PostgreSQL** backend with automatic seed JSON file database fallbacks.
 

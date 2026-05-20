@@ -7,10 +7,10 @@ const userSchema = new Schema({
   password: { type: String, required: true, select: false },
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
-  role: { 
-    type: String, 
-    enum: ['SUPER_ADMIN', 'ORG_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER', 'EMPLOYEE'], 
-    default: 'EMPLOYEE' 
+  role: {
+    type: String,
+    enum: ['SUPER_ADMIN', 'ORG_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER', 'EMPLOYEE'],
+    default: 'EMPLOYEE'
   },
   phone: String,
   designation: String,
@@ -21,13 +21,17 @@ const userSchema = new Schema({
   emergencyContactName: String,
   profilePicture: String,
   managerId: { type: Schema.Types.ObjectId, ref: 'User' },
-  status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'TERMINATED'], default: 'ACTIVE' }
+  status: { type: String, enum: ['ACTIVE', 'INACTIVE', 'TERMINATED'], default: 'ACTIVE' },
+  customFields: { type: Schema.Types.Mixed, default: {} }
 }, { timestamps: true });
 
 // Ensure emails are unique within the entire system (since it's a login identifier)
 // (Index automatically created by unique: true in schema definition)
 
 // Optional: Ensure employee IDs are unique per organization
-userSchema.index({ organizationId: 1, employeeId: 1 }, { unique: true, sparse: true });
+userSchema.index(
+  { organizationId: 1, employeeId: 1 },
+  { unique: true, sparse: true }
+);
 
 module.exports = mongoose.model('User', userSchema);

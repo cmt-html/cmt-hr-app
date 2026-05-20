@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -8,7 +8,8 @@ import {
   Dimensions, 
   StatusBar, 
   Platform, 
-  ActivityIndicator 
+  ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,27 +17,52 @@ import { useTheme } from '../theme/ThemeContext';
 import { leaveService } from '../services/api.service';
 import { Calendar, Plus, ChevronRight, Briefcase, ChevronLeft, Clock, Info } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { staggerEntrance, makeEntranceValues, makePressScale } from '../utils/animations';
 
 const { width } = Dimensions.get('window');
 
-const StatBox = ({ label, value, type, navigation, colors, isDarkMode, styles }) => (
-  <TouchableOpacity 
-    style={[
-      styles.statBox, 
-      { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF' }
-    ]}
-    onPress={() => navigation.navigate('LeaveDetails', { type })}
-    activeOpacity={0.7}
-  >
-    <Text style={[styles.statValue, { color: colors.primary }]}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </TouchableOpacity>
-);
+const StatBox = ({ label, value, type, navigation, colors, isDarkMode, styles, animValues }) => {
+  const { scale, pressIn, pressOut } = React.useRef(makePressScale(0.93)).current;
+  return (
+    <Animated.View
+      style={[
+        {
+          flex: 1,
+          opacity: animValues ? animValues.opacity : 1,
+          transform: [
+            { translateY: animValues ? animValues.translateY : 0 },
+            { scale },
+          ],
+        },
+      ]}
+    >
+      <TouchableOpacity 
+        style={[
+          styles.statBox, 
+          { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF' }
+        ]}
+        onPress={() => navigation.navigate('LeaveDetails', { type })}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        activeOpacity={1}
+      >
+        <Text style={[styles.statValue, { color: colors.primary }]}>{value}</Text>
+        <Text style={styles.statLabel}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 const LeavesScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors, isDarkMode);
   const isManagerMode = route.params?.mode === 'manager';
+
+  // ── Entrance animation values ────────────────────────────────────────────────
+  const stat1 = useRef(makeEntranceValues(30)).current;
+  const stat2 = useRef(makeEntranceValues(30)).current;
+  const stat3 = useRef(makeEntranceValues(30)).current;
+  const headerAnim = useRef(makeEntranceValues(35)).current;
 
   const safeLocalDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -56,6 +82,8 @@ const LeavesScreen = ({ navigation, route }) => {
 
   React.useEffect(() => {
     init();
+    // Staggered entrance for stat boxes and header
+    staggerEntrance([headerAnim, stat1, stat2, stat3], 80, 400);
   }, [isManagerMode]);
 
   const init = async () => {
@@ -146,9 +174,9 @@ const LeavesScreen = ({ navigation, route }) => {
         
         {!isManagerMode && (
           <View style={styles.summaryFloating}>
-            <StatBox label="Taken" value={leaveStats?.taken?.total || 0} type="taken" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} />
-            <StatBox label="Pending" value={leaveStats?.pending?.total || 0} type="pending" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} />
-            <StatBox label="Available" value={leaveStats?.available?.ANNUAL || 0} type="available" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} />
+            <StatBox label="Taken" value={leaveStats?.taken?.total || 0} type="taken" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} animValues={stat1} />
+            <StatBox label="Pending" value={leaveStats?.pending?.total || 0} type="pending" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} animValues={stat2} />
+            <StatBox label="Available" value={leaveStats?.available?.ANNUAL || 0} type="available" navigation={navigation} colors={colors} isDarkMode={isDarkMode} styles={styles} animValues={stat3} />
           </View>
         )}
       </View>
@@ -168,8 +196,9 @@ const LeavesScreen = ({ navigation, route }) => {
                   <Text style={styles.sectionTitle}>PENDING APPROVALS ({requests.length})</Text>
                 </View>
                 
-                {requests.map((item) => (
-                  <View key={item.id} style={styles.requestCard}>
+                {requests.map((item, index) => (
+                  <AnimatedListItem key={item.id} index={index}>
+                    <View style={styles.requestCard}>
                     <View style={styles.requestHeader}>
                       <View style={styles.avatarMini}>
                         <Text style={styles.avatarMiniText}>
@@ -215,7 +244,8 @@ const LeavesScreen = ({ navigation, route }) => {
                         <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Approve Request</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
+                    </View>
+                  </AnimatedListItem>
                 ))}
                 {requests.length === 0 && (
                   <View style={styles.noDataCard}>
@@ -268,23 +298,25 @@ const LeavesScreen = ({ navigation, route }) => {
                   const labelColor = item.status === 'APPROVED' ? '#065F46' : item.status === 'REJECTED' ? '#991B1B' : '#92400E';
 
                   return (
-                    <View key={item.id || index} style={styles.historyCard}>
-                      <View style={styles.historyTop}>
-                        <View style={styles.historyInfo}>
-                          <Text style={styles.historyType}>{(item.type || 'LEAVE').replace('_', ' ')}</Text>
-                          <View style={styles.historyMeta}>
-                            <Clock size={12} color={colors.textLight} />
-                            <Text style={styles.historyDate}>
-                              {safeLocalDate(item.startDate)} - {safeLocalDate(item.endDate)}
-                            </Text>
-                            <Text style={styles.historyDuration}>• {diffDays} {diffDays === '1' || diffDays === 1 ? 'Day' : 'Days'}</Text>
+                    <AnimatedListItem key={item.id || index} index={index}>
+                      <View style={styles.historyCard}>
+                        <View style={styles.historyTop}>
+                          <View style={styles.historyInfo}>
+                            <Text style={styles.historyType}>{(item.type || 'LEAVE').replace('_', ' ')}</Text>
+                            <View style={styles.historyMeta}>
+                              <Clock size={12} color={colors.textLight} />
+                              <Text style={styles.historyDate}>
+                                {safeLocalDate(item.startDate)} - {safeLocalDate(item.endDate)}
+                              </Text>
+                              <Text style={styles.historyDuration}>• {diffDays} {diffDays === '1' || diffDays === 1 ? 'Day' : 'Days'}</Text>
+                            </View>
+                          </View>
+                          <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+                            <Text style={[styles.statusText, { color: labelColor }]}>{item.status}</Text>
                           </View>
                         </View>
-                        <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-                          <Text style={[styles.statusText, { color: labelColor }]}>{item.status}</Text>
-                        </View>
                       </View>
-                    </View>
+                    </AnimatedListItem>
                   );
                 })}
                 
@@ -611,6 +643,39 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+
+/**
+ * Animated list item that fades + slides up on mount,
+ * based on its index for a stagger effect.
+ */
+const AnimatedListItem = ({ children, index = 0 }) => {
+  const opacity = React.useRef(new Animated.Value(0)).current;
+  const translateY = React.useRef(new Animated.Value(24)).current;
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 350,
+        delay: index * 70,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 350,
+        delay: index * 70,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+};
 
 export default LeavesScreen;
 
