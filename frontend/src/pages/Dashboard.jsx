@@ -24,8 +24,23 @@ const Dashboard = () => {
   // Real-time Clock Duration
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [activeSession, setActiveSession] = useState(null);
-  const [gpsPreset, setGpsPreset] = useState('Office (12.9716, 77.5946)');
+  const [currentLocation, setCurrentLocation] = useState('Fetching location...');
   const [duration, setDuration] = useState('00:00:00');
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation(`Lat: ${position.coords.latitude.toFixed(4)}, Lng: ${position.coords.longitude.toFixed(4)}`);
+        },
+        (error) => {
+          setCurrentLocation('Location access denied');
+        }
+      );
+    } else {
+      setCurrentLocation('Geolocation not supported');
+    }
+  }, []);
   
   // Metrics & State
   const [stats, setStats] = useState({ employees: 0, pendingLeaves: 0, openTickets: 0, openJobs: 0 });
@@ -117,17 +132,17 @@ const Dashboard = () => {
     try {
       if (isClockedIn) {
         // Clock Out
-        const res = await api.attendance.checkOut(user.id, gpsPreset);
+        await api.attendance.checkOut(user.id, currentLocation);
         setIsClockedIn(false);
         setActiveSession(null);
         confetti({ particleCount: 80, spread: 60, origin: { y: 0.85 } });
       } else {
         // Clock In
-        const res = await api.attendance.checkIn(user.id, gpsPreset);
+        const res = await api.attendance.checkIn(user.id, currentLocation);
         setIsClockedIn(true);
         setActiveSession(res.data.attendance);
       }
-      fetchDashboardData();
+      // Local state is updated; no need to refresh all page data
     } catch (err) {
       alert(err.response?.data?.message || 'Clock action failed.');
     }
@@ -251,21 +266,15 @@ const Dashboard = () => {
                 </p>
               </div>
 
-              {/* GPS preset selector */}
+              {/* GPS Location display */}
               <div className="w-full md:w-auto space-y-3">
                 <div className="flex items-center space-x-2 text-[12px] text-slate-400">
                   <MapPin size={14} className="text-indigo-500" />
-                  <span>Mock GPS Coordinate Preset</span>
+                  <span>Current Location</span>
                 </div>
-                <select
-                  value={gpsPreset}
-                  onChange={(e) => setGpsPreset(e.target.value)}
-                  className="w-full md:w-60 bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-[12px] text-slate-700 outline-none dark:bg-slate-850 dark:border-slate-750 dark:text-slate-200"
-                >
-                  <option value="Office (12.9716, 77.5946)">CloudMojo Bangalore Office</option>
-                  <option value="Client Site (18.9750, 72.8258)">Client Site (Mumbai)</option>
-                  <option value="Remote WFH (Mock Coordinates)">Home Network (12.9279, 77.6271)</option>
-                </select>
+                <div className="w-full md:w-60 bg-slate-50 border border-slate-150 p-2.5 rounded-xl text-[12px] text-slate-700 dark:bg-slate-850 dark:border-slate-750 dark:text-slate-200 flex items-center justify-between">
+                  <span className="truncate">{currentLocation}</span>
+                </div>
 
                 {/* Submit Action */}
                 <button

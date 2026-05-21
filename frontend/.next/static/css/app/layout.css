@@ -1372,6 +1372,9 @@ video {
 .max-w-5xl {
   max-width: 64rem;
 }
+.max-w-\[130px\] {
+  max-width: 130px;
+}
 .max-w-\[85\%\] {
   max-width: 85%;
 }
@@ -1383,9 +1386,6 @@ video {
 }
 .max-w-xl {
   max-width: 36rem;
-}
-.max-w-\[130px\] {
-  max-width: 130px;
 }
 .flex-1 {
   flex: 1 1 0%;
@@ -2444,6 +2444,10 @@ video {
   --tw-text-opacity: 1;
   color: rgb(220 38 38 / var(--tw-text-opacity, 1));
 }
+.text-rose-400 {
+  --tw-text-opacity: 1;
+  color: rgb(251 113 133 / var(--tw-text-opacity, 1));
+}
 .text-rose-600 {
   --tw-text-opacity: 1;
   color: rgb(225 29 72 / var(--tw-text-opacity, 1));
@@ -2506,10 +2510,6 @@ video {
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
-}
-.text-rose-400 {
-  --tw-text-opacity: 1;
-  color: rgb(251 113 133 / var(--tw-text-opacity, 1));
 }
 .underline {
   text-decoration-line: underline;
@@ -3094,13 +3094,13 @@ html:not(.dark) aside a:hover {
   --tw-text-opacity: 1;
   color: rgb(100 116 139 / var(--tw-text-opacity, 1));
 }
-.dark\:text-white:is(.dark *) {
-  --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
-}
 .dark\:text-slate-600:is(.dark *) {
   --tw-text-opacity: 1;
   color: rgb(71 85 105 / var(--tw-text-opacity, 1));
+}
+.dark\:text-white:is(.dark *) {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
 }
 .dark\:placeholder-slate-400:is(.dark *)::-moz-placeholder {
   --tw-placeholder-opacity: 1;
